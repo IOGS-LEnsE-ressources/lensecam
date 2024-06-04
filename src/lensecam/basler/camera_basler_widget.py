@@ -32,14 +32,8 @@ from PyQt6.QtGui import QPixmap
 from lensepy.images.conversion import *
 from lensepy.pyqt6.widget_slider import WidgetSlider
 
-if __name__ == "__main__":
-    from camera_list import CameraList
-    from camera_basler import CameraBasler, get_bits_per_pixel
-    sys.path.append('../supoptools')
-else:
-    sys.path.append('..')
-    from basler.camera_list import CameraList
-    from basler.camera_basler import CameraBasler, get_bits_per_pixel
+from lensecam.basler.camera_list import CameraList
+from lensecam.basler.camera_basler import CameraBasler, get_bits_per_pixel
 
 
 class CameraBaslerListWidget(QWidget):
