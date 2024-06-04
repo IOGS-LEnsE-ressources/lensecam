@@ -1,5 +1,5 @@
 [project]
-name = "lensepy"
+name = "lensecam"
 version = "0.0.1"
 authors = [
   { name="Julien VILLEMEJANE", email="julien.villemejane@institutoptique.fr" },
