@@ -277,11 +277,11 @@ class CameraIds:
         """
         serial_no, camera_name = None, None
         try:
-            camera_name = self.camera.DisplayName()
-            serial_no = self.camera_remote.FindNode("DeviceSerialNumber").Value()
+            camera_name = self.camera.ModelName()
+            serial_no = self.camera.SerialNumber()
             return serial_no, camera_name
         except Exception as e:
-            print("Exception - get_info_cam: " + str(e) + "")
+            print("Exception - get_cam_info: " + str(e) + "")
 
     def get_sensor_size(self) -> tuple[int, int]:
         """Return the width and the height of the sensor.

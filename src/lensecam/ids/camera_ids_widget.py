@@ -32,8 +32,13 @@ from PyQt6.QtGui import QPixmap
 from lensepy.images.conversion import *
 from lensepy.pyqt6.widget_slider import WidgetSlider
 
-from lensecam.ids.camera_list import CameraList
-from lensecam.ids.camera_ids import CameraIds, get_bits_per_pixel
+if __name__ == "__main__":
+    from camera_list import CameraList
+    from camera_ids import CameraIds, get_bits_per_pixel
+else:
+    from lensecam.ids.camera_list import CameraList
+    from lensecam.ids.camera_ids import CameraIds, get_bits_per_pixel
+
 
 class CameraIdsListWidget(QWidget):
     """Generate available cameras list.
@@ -398,6 +403,8 @@ class CameraIdsWidget(QWidget):
     
     """
 
+    connected = pyqtSignal(str)
+
     def __init__(self, camera:  ids_peak.Device = None, params_disp: bool = True, css: str = '') -> None:
         """Default constructor of the class.
 
@@ -453,7 +460,10 @@ class CameraIdsWidget(QWidget):
                 cam_dev = camera
             print(type(cam_dev))
             # Create Camera object
-            self.camera = CameraIds(cam_dev)
+            self.camera: CameraIds = CameraIds(cam_dev) # CameraIds
+            _,model = self.camera.get_cam_info()
+            # Emit the connected signal with the model of the camera
+            self.connected.emit(f'cam:{model}:')
 
             # Initialize the camera with default parameters
             self.camera.set_frame_rate(10)
@@ -617,7 +627,11 @@ class MyMainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    def test(event):
+        print(f'Camera {event}')
+
     app = QApplication(sys.argv)
     main_window = MyMainWindow()
     main_window.show()
+    main_window.central_widget.connected.connect(test)
     sys.exit(app.exec())
