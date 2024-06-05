@@ -589,15 +589,15 @@ class MyMainWindow(QMainWindow):
         manager = ids_peak.DeviceManager.Instance()
         manager.Update()
 
-        if manager.Devices:
+        if manager.Devices().empty():
+            print("No Camera")
+        else:
             print("Camera")
             device = manager.Devices()[0].OpenDevice(ids_peak.DeviceAccessType_Exclusive)
-        else:
-            print("No Camera")
-            return
 
-        self.central_widget = CameraIdsWidget(camera=device, params_disp=False)
-        #self.central_widget = CameraIdsWidget()
+        #self.central_widget = CameraIdsWidget(camera=device, params_disp=False)
+        self.central_widget = CameraIdsWidget()
+        #self.central_widget = CameraIdsParamsWidget()
         self.setCentralWidget(self.central_widget)
 
     def closeEvent(self, event):
