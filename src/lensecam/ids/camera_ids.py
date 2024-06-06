@@ -149,6 +149,7 @@ class CameraIds:
         self.color_mode = 'Mono8'  # default
         self.set_color_mode('Mono8')
         # self.set_display_mode('Mono8')
+        self.init_default_parameters()
 
         # AOI size
         self.aoi_x0: int = 0
@@ -299,6 +300,16 @@ class CameraIds:
             return max_width, max_height
         except Exception as e:
             print("Exception - get_sensor_size: " + str(e) + "")
+
+    def init_default_parameters(self, color_mode:str='Mono8', frame_rate: float=3,
+                                exposure: float=2, black_level:int=10):
+        """Initialize the camera with specific default parameters.
+
+        """
+        self.set_color_mode(color_mode)
+        self.set_frame_rate(frame_rate)
+        self.set_exposure(exposure*1000)
+        self.set_black_level(black_level)
 
     def set_display_mode(self, colormode: str = 'Mono8') -> None:
         """Change the color mode of the converter.

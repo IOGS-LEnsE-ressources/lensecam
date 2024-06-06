@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
     QLabel, QComboBox, QPushButton, QCheckBox,
     QMessageBox
 )
-from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QPixmap
 
 from lensepy.images.conversion import *
@@ -473,6 +473,7 @@ class CameraIdsWidget(QWidget):
             # Clear layout with combo list
             self.clear_layout()
             # Include the widget with the camera display
+            self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.main_layout.addWidget(self.camera_display, 0, 0)
             self.main_layout.setRowStretch(0, 4)
             if self.display_params:
