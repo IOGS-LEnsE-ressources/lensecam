@@ -430,7 +430,7 @@ class CameraIdsWidget(QWidget):
 
         # List of the available camera
         self.camera = None
-        self.acquiring = False
+        self.image_array = None
         if camera_device is None:
             print('No Cam')
             self.camera_device = None
@@ -552,24 +552,13 @@ class CameraIdsWidget(QWidget):
         """
         try:
             if self.is_connected():
-                self.start_acquisition()
-                # Get raw image
-                image_array = self.camera.get_image()
+                self.image_array = self.get_disp_image()
                 # Get widget size
                 frame_width = self.width()
                 frame_height = self.height()
-                # Depending on the color mode - display only in 8 bits mono
-                nb_bits = get_bits_per_pixel(self.camera.get_color_mode())
-                if nb_bits > 8:
-                    image_array = image_array.view(np.uint16)
-                    image_array_disp = (image_array / (2 ** (nb_bits - 8))).astype(np.uint8)
-                else:
-                    image_array = image_array.view(np.uint8)
-                    image_array_disp = image_array.astype(np.uint8)
-
                 # Resize to the display size
                 image_array_disp2 = resize_image_ratio(
-                    image_array_disp,
+                    self.image_array,
                     frame_width,
                     frame_height)
                 # Convert the frame into an image
@@ -583,16 +572,39 @@ class CameraIdsWidget(QWidget):
         except Exception as e:
             print("Exception - refresh: " + str(e) + "")
 
-    def get_image_during_acquisition(self) -> np.ndarray:
+    def get_image(self) -> np.ndarray:
+        """Return a RAW image from the camera as an array."""
         if self.camera.is_camera_connected():
-            self.stop_acquisition(keep_active=True)
-            self.camera.free_memory()
-            self.camera.alloc_memory()
-            #self.camera.trigger()
-            self.camera.start_acquisition()
-            pict = self.camera.get_image()
             self.start_acquisition()
-            return pict
+            # Get raw image
+            image_array = self.camera.get_image()
+            # Depending on the color mode - display only in 8 bits mono
+            nb_bits = get_bits_per_pixel(self.camera.get_color_mode())
+            if nb_bits > 8:
+                image_array = image_array.view(np.uint16)
+            else:
+                image_array = image_array.view(np.uint8)
+            return image_array
+        else:
+            return None
+
+    def get_disp_image(self) -> np.ndarray:
+        """Return an image from the camera as an array of uint8."""
+        if self.camera.is_camera_connected():
+            self.start_acquisition()
+            # Get raw image
+            image_array = self.camera.get_image()
+            # Depending on the color mode - display only in 8 bits mono
+            nb_bits = get_bits_per_pixel(self.camera.get_color_mode())
+            if nb_bits > 8:
+                image_array = image_array.view(np.uint16)
+                image_array_disp = (image_array / (2 ** (nb_bits - 8))).astype(np.uint8)
+            else:
+                image_array = image_array.view(np.uint8)
+                image_array_disp = image_array.astype(np.uint8)
+            return image_array_disp
+        else:
+            return None
 
     def quit_application(self) -> None:
         """
@@ -667,21 +679,23 @@ class MyMainWindow(QMainWindow):
 
     def action_mode_get(self, event):
         print(f'GET')
-        pict1 = self.central_widget.get_image_during_acquisition()
-        time.sleep(0.5)
-        pict2 = self.central_widget.get_image_during_acquisition()
-        time.sleep(0.5)
-        pict3 = self.central_widget.get_image_during_acquisition()
-        time.sleep(0.5)
-        pict4 = self.central_widget.get_image_during_acquisition()
-        time.sleep(0.5)
-        pict5 = self.central_widget.get_image_during_acquisition()
-        time.sleep(0.5)
+        self.central_widget.stop_acquisition()
+        pict1 = self.central_widget.get_image()
         cv2.imwrite('myImage1.png', pict1)
+        print('2')
+        pict2 = self.central_widget.get_image()
         cv2.imwrite('myImage2.png', pict2)
+        print('2')
+        pict3 = self.central_widget.get_image()
         cv2.imwrite('myImage3.png', pict3)
+        print('2')
+        pict4 = self.central_widget.get_image()
         cv2.imwrite('myImage4.png', pict4)
+        print('2')
+        pict5 = self.central_widget.get_image()
         cv2.imwrite('myImage5.png', pict5)
+        print('2')
+        self.central_widget.start_acquisition()
 
 
     def closeEvent(self, event):
