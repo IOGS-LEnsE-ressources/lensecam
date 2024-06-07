@@ -405,7 +405,7 @@ class CameraIdsWidget(QWidget):
 
     connected = pyqtSignal(str)
 
-    def __init__(self, camera:  ids_peak.Device = None, params_disp: bool = True, css: str = '') -> None:
+    def __init__(self, camera_device:  ids_peak.Device = None, params_disp: bool = True, css: str = '') -> None:
         """Default constructor of the class.
 
         :param params_disp: Displaying the parameters. Default true.
@@ -429,9 +429,11 @@ class CameraIdsWidget(QWidget):
         self.main_timer.timeout.connect(self.refresh)
 
         # List of the available camera
-        if camera is None:
+        self.camera = None
+        self.acquiring = False
+        if camera_device is None:
             print('No Cam')
-            self.camera = None
+            self.camera_device = None
             self.cameras_list_widget = CameraIdsListWidget()
             self.main_layout.addWidget(self.cameras_list_widget, 0, 0)
 
@@ -439,25 +441,25 @@ class CameraIdsWidget(QWidget):
             self.cameras_list_widget.connected.connect(self.connect_camera)
         else:
             print('Camera OK')
-            self.camera = camera
-            self.connect_camera(camera=camera)
+            self.camera_device = camera_device
+            self.connect_camera(camera_device=camera_device)
 
         self.setLayout(self.main_layout)
         self.setStyleSheet(css)
 
-    def connect_camera(self, event=None, camera: ids_peak.Device = None) -> None:
+    def connect_camera(self, event=None, camera_device: ids_peak.Device = None) -> None:
         """
         Trigger action when a connected signal from the combo list is emitted.
 
 
         """
         try:
-            if camera is None:
+            if camera_device is None:
                 print('No Connect')
                 # Get the index of the selected camera
                 cam_dev = self.cameras_list_widget.get_selected_camera_dev()
             else:
-                cam_dev = camera
+                cam_dev = camera_device
             print(type(cam_dev))
             # Create Camera object
             self.camera: CameraIds = CameraIds(cam_dev) # CameraIds
@@ -482,6 +484,8 @@ class CameraIdsWidget(QWidget):
                 self.camera_infos.set_camera(self.camera)
                 self.camera_infos.update_params()
             # Start main timer
+            self.camera.start_acquisition()
+            self.acquiring = True
             fps = self.camera.get_frame_rate()
             time_ms = int(1000 / fps + 10)  # 10 ms extra time
             self.main_timer.setInterval(time_ms)  # in ms
@@ -500,6 +504,24 @@ class CameraIdsWidget(QWidget):
             return False
         else:
             return True
+
+    def stop_acquisition(self, keep_active:bool = False):
+        """Stop the acquisition of the camera."""
+        if self.is_connected():
+            if self.main_timer.isActive():
+                self.main_timer.stop()
+            if keep_active is False:
+                self.camera.stop_acquisition()
+
+    def start_acquisition(self):
+        """Stop the acquisition of the camera."""
+        if self.is_connected():
+            self.camera.start_acquisition()
+            # Start main timer
+            fps = self.camera.get_frame_rate()
+            time_ms = int(1000 / fps + 10)  # 10 ms extra time
+            self.main_timer.setInterval(time_ms)  # in ms
+            self.main_timer.start()
 
     def clear_layout(self) -> None:
         """
@@ -530,7 +552,7 @@ class CameraIdsWidget(QWidget):
         """
         try:
             if self.is_connected():
-                self.camera.start_acquisition()
+                self.start_acquisition()
                 # Get raw image
                 image_array = self.camera.get_image()
                 # Get widget size
@@ -560,6 +582,17 @@ class CameraIdsWidget(QWidget):
                 self.camera_display.setText('No Camera Connected')
         except Exception as e:
             print("Exception - refresh: " + str(e) + "")
+
+    def get_image_during_acquisition(self) -> np.ndarray:
+        if self.camera.is_camera_connected():
+            self.stop_acquisition(keep_active=True)
+            self.camera.free_memory()
+            self.camera.alloc_memory()
+            #self.camera.trigger()
+            self.camera.start_acquisition()
+            pict = self.camera.get_image()
+            self.start_acquisition()
+            return pict
 
     def quit_application(self) -> None:
         """
@@ -606,10 +639,50 @@ class MyMainWindow(QMainWindow):
             print("Camera")
             device = manager.Devices()[0].OpenDevice(ids_peak.DeviceAccessType_Exclusive)
 
-        #self.central_widget = CameraIdsWidget(camera=device, params_disp=False)
-        self.central_widget = CameraIdsWidget()
-        #self.central_widget = CameraIdsParamsWidget()
+        self.central_widget = CameraIdsWidget(camera_device=device, params_disp=False)
+        #self.central_widget = CameraIdsWidget()
         self.setCentralWidget(self.central_widget)
+
+        self.choice_widget = QWidget()
+        self.choice_layout = QVBoxLayout()
+        self.mode_acq = QPushButton('Mode ACQ')
+        self.mode_stop = QPushButton('Mode STOP')
+        self.mode_get = QPushButton('Mode GET')
+        self.mode_acq.clicked.connect(self.action_mode_acq)
+        self.choice_layout.addWidget(self.mode_acq)
+        self.mode_stop.clicked.connect(self.action_mode_stop)
+        self.choice_layout.addWidget(self.mode_stop)
+        self.mode_get.clicked.connect(self.action_mode_get)
+        self.choice_layout.addWidget(self.mode_get)
+        self.choice_widget.setLayout(self.choice_layout)
+        self.setMenuWidget(self.choice_widget)
+
+    def action_mode_stop(self, event):
+        print(f'STOP')
+        self.central_widget.stop_acquisition(keep_active=True)
+
+    def action_mode_acq(self, event):
+        print(f'ACQ')
+        self.central_widget.start_acquisition()
+
+    def action_mode_get(self, event):
+        print(f'GET')
+        pict1 = self.central_widget.get_image_during_acquisition()
+        time.sleep(0.5)
+        pict2 = self.central_widget.get_image_during_acquisition()
+        time.sleep(0.5)
+        pict3 = self.central_widget.get_image_during_acquisition()
+        time.sleep(0.5)
+        pict4 = self.central_widget.get_image_during_acquisition()
+        time.sleep(0.5)
+        pict5 = self.central_widget.get_image_during_acquisition()
+        time.sleep(0.5)
+        cv2.imwrite('myImage1.png', pict1)
+        cv2.imwrite('myImage2.png', pict2)
+        cv2.imwrite('myImage3.png', pict3)
+        cv2.imwrite('myImage4.png', pict4)
+        cv2.imwrite('myImage5.png', pict5)
+
 
     def closeEvent(self, event):
         """
@@ -634,5 +707,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = MyMainWindow()
     main_window.show()
-    main_window.central_widget.connected.connect(test)
     sys.exit(app.exec())

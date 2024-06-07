@@ -172,6 +172,7 @@ class CameraIds:
     def trigger(self):        
         # Software trigger of the camera
         try:
+            self.camera_remote.FindNode("AcquisitionMode").SetCurrentEntry("SingleFrame")
             self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
             self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
             self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
@@ -248,7 +249,7 @@ class CameraIds:
             return False
 
     def stop_acquisition(self) -> bool:
-        """Disconnect the camera."""
+        """Stop Acquisition on the camera."""
         try:
             if self.is_opened:
                 self.camera_remote.FindNode("AcquisitionStop").Execute()
@@ -374,6 +375,7 @@ class CameraIds:
         try:
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
+            self.camera_remote.FindNode("TriggerSoftware").WaitUntilDone()
             buffer = self.data_stream.WaitForFinishedBuffer(1000)
             # convert to RGB
             raw_image = ids_ipl.Image.CreateFromSizeAndBuffer(
