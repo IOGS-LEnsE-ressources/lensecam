@@ -651,7 +651,7 @@ class MyMainWindow(QMainWindow):
             print("Camera")
             device = manager.Devices()[0].OpenDevice(ids_peak.DeviceAccessType_Exclusive)
 
-        self.central_widget = CameraIdsWidget(camera_device=device, params_disp=False)
+        self.central_widget = CameraIdsWidget(camera_device=device, params_disp=True)
         #self.central_widget = CameraIdsWidget()
         self.setCentralWidget(self.central_widget)
 
