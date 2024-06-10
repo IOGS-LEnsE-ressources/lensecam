@@ -53,16 +53,11 @@ class to communicate with an IDS camera sensor.
 """
 
 import numpy as np
-if __name__ == '__main__':
-    from camera_ids import CameraIds
-    from camera_thread import CameraThread
-else:
-    from _tests.camera_ids import CameraIds
-    from _tests.camera_thread import CameraThread
-from lensecam.ids.camera_ids_widget import CameraIdsListWidget
+from lensecam.ids.camera_ids import CameraIds
+from lensecam.ids.camera_ids_widget0 import CameraIdsListWidget
 
 from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGridLayout
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from lensepy.images.conversion import array_to_qimage, resize_image_ratio
 
 
@@ -103,6 +98,7 @@ class CameraIdsWidget(QWidget):
         self.camera_connected = False
         # GUI
         self.camera_display = QLabel('Image')
+        self.camera_display_params = SmallParamsDisplay(self)
         self.initUI()
 
     def set_camera(self, camera: CameraIds):
@@ -114,13 +110,11 @@ class CameraIdsWidget(QWidget):
         self.setLayout(self.layout)
 
         if self.camera is None:
-            print('No Cam')
             self.cameras_list_widget = CameraIdsListWidget()
             self.layout.addWidget(self.cameras_list_widget, 1, 0)
             # Connect the signal emitted by the ComboList to its action
             self.cameras_list_widget.connected.connect(self.connect_camera)
         else:
-            print('Camera OK')
             self.set_camera(camera=self.camera)
 
     def connect_camera(self, event):
@@ -128,8 +122,9 @@ class CameraIdsWidget(QWidget):
             cam_dev = self.cameras_list_widget.get_selected_camera_dev()
             self.camera = CameraIds(cam_dev)
             self.camera_connected = True
+            self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.clear_layout(1, 0)
-            print(cam_dev)
+            self.layout.addWidget(self.camera_display_params, 1, 0)
             self.connected.emit('cam')
         except Exception as e:
             print(f'Exception - connect_camera {e}')
@@ -151,7 +146,72 @@ class CameraIdsWidget(QWidget):
             else:
                 self.layout.removeItem(item)
 
-if __name__ ==  '__main__':
+
+class SmallParamsDisplay(QWidget):
+    """Area to display main parameters of the camera.
+
+    :param parent: Parent widget of this widget.
+    :type parent: CameraIdsWidget
+    :param camera: Device to control
+    :type camera: pylon.TlFactory
+    :param small_layout: Layout of the widget
+    :type small_layout: QGridLayout
+    :param camera_name_label: Label to display the name of the camera.
+    :type camera_name_label: QLabel
+    :param camera_colormode_label: Label to display the color mode of the camera.
+    :type camera_colormode_label: QLabel
+    :param camera_expotime_label: Label to display the exposure time of the camera.
+    :type camera_expotime_label: QLabel
+    :param camera_fps_label: Label to display the frame rate of the camera.
+    :type camera_fps_label: QLabel
+    """
+
+    def __init__(self, parent) -> None:
+        """
+        Default constructor of the class.
+
+        :param parent: Parent widget of this widget.
+        :type parent: CameraIdsWidget
+        """
+        super().__init__(parent=None)
+        self.parent = parent
+        # Camera device
+        self.camera = None
+        # Layout Grid
+        self.small_layout = QGridLayout()
+        self.small_layout.setSpacing(20)
+        # Internal Widgets
+        self.camera_name_label = QLabel('Name')
+        self.camera_colormode_label = QLabel('ColorMode')
+        self.camera_expotime_label = QLabel('Exposure')
+        self.camera_fps_label = QLabel('FPS')
+        # Add widgets to the layout
+        self.small_layout.addWidget(self.camera_name_label, 0, 0)
+        self.small_layout.addWidget(self.camera_colormode_label, 0, 1)
+        self.small_layout.addWidget(self.camera_expotime_label, 0, 2)
+        self.small_layout.addWidget(self.camera_fps_label, 0, 3)
+        # All the grid box have the same width
+        for i in range(self.small_layout.columnCount()):
+            self.small_layout.setColumnStretch(i, 1)
+        self.setLayout(self.small_layout)
+
+    def update_params(self) -> None:
+        """
+        Update the display of the parameters
+        """
+        camera = self.parent.camera
+        _, name = camera.get_cam_info()
+        name = 'Camera : ' + name
+        self.camera_name_label.setText(name)
+        colormode = camera.get_color_mode()
+        self.camera_colormode_label.setText(colormode)
+        expo = str(round(camera.get_exposure() / 1000, 2)) + ' ms'
+        self.camera_expotime_label.setText(expo)
+        fps = str(round(camera.get_frame_rate(), 2)) + ' fps'
+        self.camera_fps_label.setText(fps)
+
+
+if __name__ == '__main__':
     class Remote(QWidget):
         """"""
         transmitted = pyqtSignal(str)
@@ -198,6 +258,8 @@ if __name__ ==  '__main__':
 
     from PyQt6.QtWidgets import QMainWindow
     from PyQt6.QtGui import QPixmap
+    from lensecam.camera_thread import CameraThread
+
 
     class MainWindow(QMainWindow):
         def __init__(self):
@@ -224,13 +286,12 @@ if __name__ ==  '__main__':
         def action_remote(self, event):
             if event == 'get':
                 try:
-                    print('Get Image OK')
                     self.camera_widget.camera.init_camera()
                     self.camera_widget.camera.alloc_memory()
                     self.camera_widget.camera.start_acquisition()
                     raw_array = self.camera_widget.camera.get_image()
                     # Depending on the color mode - display only in 8 bits mono
-                    nb_bits = 8 #get_bits_per_pixel(self.camera.get_color_mode())
+                    nb_bits = 8  # get_bits_per_pixel(self.camera.get_color_mode())
                     if nb_bits > 8:
                         image_array = raw_array.view(np.uint16)
                         image_array_disp = (image_array / (2 ** (nb_bits - 8))).astype(np.uint8)
@@ -241,9 +302,9 @@ if __name__ ==  '__main__':
                     frame_height = self.camera_widget.height()
                     # Resize to the display size
                     image_array_disp2 = resize_image_ratio(
-                            image_array_disp,
-                            frame_width,
-                            frame_height)
+                        image_array_disp,
+                        frame_width,
+                        frame_height)
                     # Convert the frame into an image
                     image = array_to_qimage(image_array_disp2)
                     pmap = QPixmap(image)
@@ -269,7 +330,7 @@ if __name__ ==  '__main__':
 
             """
             self.camera_thread.set_camera(camera)
-            self.camera_widget = CameraIdsWidget(camera)
+            self.camera_widget = CameraIdsWidget(camera, params_disp=True)
             self.layout.addWidget(self.camera_widget, 1, 0)
 
         def update_image(self, image_array):
@@ -293,53 +354,52 @@ if __name__ ==  '__main__':
             self.camera_thread.stop()
             event.accept()
 
-    if __name__ == "__main__":
-        import sys
-        from PyQt6.QtWidgets import QApplication
 
-        camera_ids = CameraIds()
-        if camera_ids.find_first_camera():
-            print(f'Camera OK')
-            device = camera_ids.camera_device
+    import sys
+    from PyQt6.QtWidgets import QApplication
 
-        # Test with a Thread
-        app = QApplication(sys.argv)
-        main_window = MainWindow()
-        main_window.set_camera(camera_ids)
-        main_window.show()
-        sys.exit(app.exec())
+    camera_ids = CameraIds()
+    if camera_ids.find_first_camera():
+        print(f'Camera OK')
+        device = camera_ids.camera_device
 
+    # Test with a Thread
+    app = QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.set_camera(camera_ids)
+    main_window.show()
+    sys.exit(app.exec())
 
-        ''' # Test image by image
-        try:
-            print(camera_ids.get_cam_info())
-            camera_ids.init_camera()
-            camera_ids.alloc_memory()
-    
-            numberOfImagesToGrab = 2
-            camera_ids.start_acquisition()
-    
-            for k in range(numberOfImagesToGrab):
-                raw_image = camera_ids.get_image()
-                color_image = raw_image.ConvertTo(ids_ipl.PixelFormatName_Mono8)
-                picture = color_image.get_numpy_3D()
-                picture_shape = picture.shape
-                # Access the image data.
-                print("SizeX: ", picture_shape[1])
-                print("SizeY: ", picture_shape[0])
-                print("Gray value of first pixel: ", picture[0, 0])
-    
-                cv2.imshow('image', picture)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-    
-            camera_ids.stop_acquisition()
-            camera_ids.free_memory()
-    
-        except Exception as e:
-            print("EXCEPTION: " + str(e))
-    
-        finally:
-            ids_peak.Library.Close()
-    
-        '''
+    ''' # Test image by image
+    try:
+        print(camera_ids.get_cam_info())
+        camera_ids.init_camera()
+        camera_ids.alloc_memory()
+
+        numberOfImagesToGrab = 2
+        camera_ids.start_acquisition()
+
+        for k in range(numberOfImagesToGrab):
+            raw_image = camera_ids.get_image()
+            color_image = raw_image.ConvertTo(ids_ipl.PixelFormatName_Mono8)
+            picture = color_image.get_numpy_3D()
+            picture_shape = picture.shape
+            # Access the image data.
+            print("SizeX: ", picture_shape[1])
+            print("SizeY: ", picture_shape[0])
+            print("Gray value of first pixel: ", picture[0, 0])
+
+            cv2.imshow('image', picture)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+        camera_ids.stop_acquisition()
+        camera_ids.free_memory()
+
+    except Exception as e:
+        print("EXCEPTION: " + str(e))
+
+    finally:
+        ids_peak.Library.Close()
+
+    '''
