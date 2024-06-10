@@ -370,7 +370,7 @@ class SmallParamsDisplay(QWidget):
             self.params_window.set_camera(self.camera)
             self.params_window.show()
         except Exception as e:
-            print("Exception - connect_camera: " + str(e) + "")
+            print("Exception - params_button_action: " + str(e) + "")
 
 
 class CameraIdsWidget(QWidget):
