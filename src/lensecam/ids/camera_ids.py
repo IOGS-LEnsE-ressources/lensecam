@@ -58,60 +58,6 @@ from ids_peak import ids_peak
 import ids_peak_ipl.ids_peak_ipl as ids_ipl
 
 
-def check_value_in(val: int, val_max: int, val_min: int = 0):
-    """
-    Check if a value is in a range.
-
-    :param val: Value to check.
-    :type val: int
-    :param val_max: Maximum value of the range.
-    :type val: int
-    :param val_min: Minimum value of the range. Default 0.
-    :type val: int
-
-    :return: true if the coordinates are in the sensor area
-    :rtype: bool
-
-    """
-    if val_min <= val <= val_max:
-        return True
-    else:
-        return False
-
-
-def get_converter_mode(color_mode: str) -> int:
-    """Return the converter display mode.
-
-    :param color_mode: color mode of the camera
-        ('Mono8', 'Mono10', 'Mono12' or 'RGB8')
-    :type color_mode: str
-    :return: corresponding converter display mode
-    :rtype: int
-
-    """
-    return {
-        "Mono8": ids_ipl.PixelFormatName_Mono8,
-        "Mono10": ids_ipl.PixelFormatName_Mono10,
-        "Mono12": ids_ipl.PixelFormatName_Mono12,
-        "RGB8": ids_ipl.PixelFormatName_RGB8
-    }[color_mode]
-
-
-def get_bits_per_pixel(color_mode: str) -> int:
-    """Return the number of bits per pixel.
-
-    :param color_mode: color mode.
-    :type color_mode: str
-    :return: number of bits per pixel.
-    :rtype: int
-
-    """
-    return {
-        'Mono8': 8,
-        'Mono10': 10,
-        'Mono12': 12,
-        'RGB8': 8
-    }[color_mode]
 
 
 class CameraIds:
