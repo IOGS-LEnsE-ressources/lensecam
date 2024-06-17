@@ -121,8 +121,9 @@ class CameraIdsWidget(QWidget):
         self.camera = camera
         self.camera_connected = True
         self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.clear_layout(1, 0)
-        self.layout.addWidget(self.camera_display_params, 1, 0)
+        if self.display_params:
+            self.clear_layout(1, 0)
+            self.layout.addWidget(self.camera_display_params, 1, 0)
 
     def connect_camera(self, event):
         try:
@@ -130,8 +131,9 @@ class CameraIdsWidget(QWidget):
             self.camera = CameraIds(cam_dev)
             self.camera_connected = True
             self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.clear_layout(1, 0)
-            self.layout.addWidget(self.camera_display_params, 1, 0)
+            if self.display_params:
+                self.clear_layout(1, 0)
+                self.layout.addWidget(self.camera_display_params, 1, 0)
             self.connected.emit('cam')
         except Exception as e:
             print(f'Exception - connect_camera {e}')
