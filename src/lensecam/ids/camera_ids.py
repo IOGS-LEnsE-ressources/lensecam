@@ -130,7 +130,10 @@ class CameraIds:
     def __init__(self, camera_device: ids_peak.Device = None) -> None:
         """"""
         self.camera_device = camera_device
-        self.camera_connected = False   # A camera device is connected
+        if self.camera_device is None:
+            self.camera_connected = False
+        else:       # A camera device is connected
+            self.camera_connected = True
         self.camera_acquiring = False   # The camera is acquiring
         self.camera_remote = None
         self.data_stream = None

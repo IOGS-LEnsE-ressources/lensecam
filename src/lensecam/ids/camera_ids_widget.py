@@ -95,14 +95,14 @@ class CameraIdsWidget(QWidget):
         # Camera
         self.display_params = params_disp
         self.camera = camera
-        self.camera_connected = False
+        if camera is not None:
+            self.camera_connected = True
+        else:
+            self.camera_connected = False
         # GUI
         self.camera_display = QLabel('Image')
         self.camera_display_params = SmallParamsDisplay(self)
         self.initUI()
-
-    def set_camera(self, camera: CameraIds):
-        self.camera = camera
 
     def initUI(self):
         self.layout = QGridLayout()
@@ -116,6 +116,13 @@ class CameraIdsWidget(QWidget):
             self.cameras_list_widget.connected.connect(self.connect_camera)
         else:
             self.set_camera(camera=self.camera)
+
+    def set_camera(self, camera: CameraIds):
+        self.camera = camera
+        self.camera_connected = True
+        self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.clear_layout(1, 0)
+        self.layout.addWidget(self.camera_display_params, 1, 0)
 
     def connect_camera(self, event):
         try:
