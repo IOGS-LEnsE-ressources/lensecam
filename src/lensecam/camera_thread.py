@@ -38,11 +38,8 @@ class CameraThread(QThread):
             self.stopping = True
             while self.stopping == True:
                 pass
-            print('Stop 1')
             self.camera.stop_acquisition()
-            print('Stop 2')
             self.camera.free_memory()
-            print('Stop 3')
 
     def run(self):
         """
@@ -55,7 +52,6 @@ class CameraThread(QThread):
         """
         try:
             if self.camera.camera_acquiring is False:
-                self.camera.init_camera()
                 self.camera.alloc_memory()
                 self.camera.start_acquisition()
                 self.running = True

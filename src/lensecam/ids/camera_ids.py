@@ -210,12 +210,17 @@ class CameraIds:
         """"""
         if camera_device is None:
             if self.camera_connected:
-                print('Remote OK')
                 self.camera_remote = self.camera_device.RemoteDevice().NodeMaps()[0]
+                self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
+                self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
+                self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
         else:
             self.camera_device = camera_device
             print('Remote OK - cam_dev')
             self.camera_remote = camera_device.RemoteDevice().NodeMaps()[0]
+            self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
+            self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
+            self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
             self.camera_connected = True
 
     def alloc_memory(self) -> bool:
@@ -238,9 +243,7 @@ class CameraIds:
             for count in range(num_buffers_min_required):
                 buffer = self.data_stream.AllocAndAnnounceBuffer(payload_size)
                 self.data_stream.QueueBuffer(buffer)
-            self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
-            self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
-            self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
+            print('AM 3')
             return True
         else:
             return False
