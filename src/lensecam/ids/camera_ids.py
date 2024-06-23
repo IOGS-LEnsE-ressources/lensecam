@@ -206,7 +206,7 @@ class CameraIds:
         except Exception as e:
             print("Exception - get_sensor_size: " + str(e) + "")
 
-    def init_camera(self, camera_device=None ):
+    def init_camera(self, camera_device=None, mode_max:bool=False ):
         """"""
         if camera_device is None:
             if self.camera_connected:
@@ -214,9 +214,17 @@ class CameraIds:
                 self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
                 self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
                 self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
+
+                if mode_max is True:
+                    # List of modes
+                    color_mode_list = self.list_color_modes()
+                    # Change to maximum color mode
+                    max_mode = color_mode_list[len(color_mode_list) - 1]
+                    self.set_color_mode(max_mode)
+                    self.nb_bits_per_pixels = get_bits_per_pixel(max_mode)
+
         else:
             self.camera_device = camera_device
-            print('Remote OK - cam_dev')
             self.camera_remote = camera_device.RemoteDevice().NodeMaps()[0]
             self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
             self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
@@ -228,7 +236,6 @@ class CameraIds:
         if self.camera_connected:
             data_streams = self.camera_device.DataStreams()
             if data_streams.empty():
-                print("No datastream available.")
                 return False
             self.data_stream = data_streams[0].OpenDataStream()
             # Flush queue and prepare all buffers for revoking
@@ -243,7 +250,6 @@ class CameraIds:
             for count in range(num_buffers_min_required):
                 buffer = self.data_stream.AllocAndAnnounceBuffer(payload_size)
                 self.data_stream.QueueBuffer(buffer)
-            print('AM 3')
             return True
         else:
             return False
@@ -296,7 +302,15 @@ class CameraIds:
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
             picture = raw_image.get_numpy_3D()
-            return picture
+            # Depending on the color mode - display only in 8 bits mono
+            nb_bits = get_bits_per_pixel(self.get_color_mode())
+            if nb_bits > 8:
+                picture = picture.view(np.uint16)
+                pow_2 = 16-nb_bits
+                picture = picture * 2**pow_2
+            else:
+                picture = picture.view(np.uint8)
+            return picture.squeeze()
         else:
             return None
 
@@ -336,6 +350,25 @@ class CameraIds:
             # self.set_display_mode(color_mode)
         except Exception as e:
             print("Exception - set_color_mode: " + str(e) + "")
+
+    def list_color_modes(self):
+        """
+        Return a list of the different available color modes.
+
+        See : https://www.1stvision.com/cameras/IDS/IDS-manuals/en/pixel-format.html
+
+        :return: List of the different available color modes (PixelFormat)
+        :rtype: list
+        """
+        color_modes = self.camera_remote.FindNode("PixelFormat").Entries()
+        color_modes_list = []
+        for entry in color_modes:
+            if (entry.AccessStatus() != ids_peak.NodeAccessStatus_NotAvailable
+                    and entry.AccessStatus() != ids_peak.NodeAccessStatus_NotImplemented):
+                color_modes_list.append(entry.SymbolicValue())
+
+        return color_modes_list
+
 
     def set_aoi(self, x0, y0, width, height) -> bool:
         """Set the area of interest (aoi).
@@ -583,11 +616,18 @@ if __name__ == "__main__":
     cam_connected = my_cam.camera_connected
     print(f'Camera is connected ?? {cam_connected}')
     if cam_connected:
-        my_cam.init_camera()    # create a remote for the camera
+        my_cam.init_camera(mode_max=True)    # create a remote for the camera
         print(f'W/H = {my_cam.get_sensor_size()}')
+
+        # Color modes
+        my_cam.list_color_modes()
+        # Try to catch an image
         my_cam.alloc_memory()   # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
         raw_image = my_cam.get_image()
+
+        print(raw_image.shape)
+
         # Display image
         cv2.imshow('image', raw_image)
         cv2.waitKey(0)

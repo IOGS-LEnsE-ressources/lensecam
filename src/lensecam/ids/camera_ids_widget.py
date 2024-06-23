@@ -53,8 +53,12 @@ class to communicate with an IDS camera sensor.
 """
 
 import numpy as np
-from lensecam.ids.camera_ids import CameraIds
-from lensecam.ids.camera_ids_widget0 import CameraIdsListWidget
+if __name__ == "__main__":
+    from camera_ids import CameraIds
+    from camera_ids_widget0 import CameraIdsListWidget
+else:
+    from lensecam.ids.camera_ids import CameraIds
+    from lensecam.ids.camera_ids_widget0 import CameraIdsListWidget
 
 from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGridLayout
 from PyQt6.QtCore import pyqtSignal, Qt
@@ -68,8 +72,8 @@ class CameraIdsWidget(QWidget):
 
     :param cameras_list_widget: Widget containing a ComboBox with the list of available cameras.
     :type cameras_list_widget: CameraIdsListWidget
-    :param main_layout: Main layout container of the widget.
-    :type main_layout: QGridLayout
+    :param layout: Main layout container of the widget.
+    :type layout: QGridLayout
     :param camera: Device to control
     :type camera: CameraIds
 
@@ -84,14 +88,17 @@ class CameraIdsWidget(QWidget):
 
     :param camera_display: Area to display the camera image
     :type camera_display: QLabel
-    :param camera_infos: Area to display camera informations (FPS, expotime...)
-    :type camera_infos: SmallParamsDisplay
-
     """
     connected = pyqtSignal(str)
 
     def __init__(self, camera: CameraIds = None, params_disp=False):
+        """
+
+        :param camera: The camera device to control.
+        :param params_disp: If True, display parameters of the camera.
+        """
         super().__init__(parent=None)
+        self.layout = QGridLayout()
         # Camera
         self.display_params = params_disp
         self.camera = camera
@@ -102,10 +109,10 @@ class CameraIdsWidget(QWidget):
         # GUI
         self.camera_display = QLabel('Image')
         self.camera_display_params = SmallParamsDisplay(self)
+        self.cameras_list_widget = QWidget()
         self.initUI()
 
     def initUI(self):
-        self.layout = QGridLayout()
         self.layout.addWidget(self.camera_display, 0, 0)
         self.setLayout(self.layout)
 
@@ -118,7 +125,15 @@ class CameraIdsWidget(QWidget):
             self.set_camera(camera=self.camera)
 
     def set_camera(self, camera: CameraIds):
+        """
+        
+        :param camera: 
+        :param mode_max: If True, initialize the camera in the color mode with the higher pixel resolution
+            else in 8 bits mode.
+        :return: 
+        """
         self.camera = camera
+
         self.camera_connected = True
         self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if self.display_params:
@@ -137,6 +152,10 @@ class CameraIdsWidget(QWidget):
             self.connected.emit('cam')
         except Exception as e:
             print(f'Exception - connect_camera {e}')
+
+    def update_params(self):
+        if self.display_params:
+            self.camera_display_params.update_params()
 
     def clear_layout(self, row: int, column: int) -> None:
         """Remove widgets from a specific position in the layout.
@@ -295,7 +314,7 @@ if __name__ == '__main__':
         def action_remote(self, event):
             if event == 'get':
                 try:
-                    self.camera_widget.camera.init_camera()
+                    self.camera_widget.update_params()
                     self.camera_widget.camera.alloc_memory()
                     self.camera_widget.camera.start_acquisition()
                     raw_array = self.camera_widget.camera.get_image()
@@ -306,7 +325,6 @@ if __name__ == '__main__':
                         image_array_disp = (image_array / (2 ** (nb_bits - 8))).astype(np.uint8)
                     else:
                         image_array_disp = raw_array
-                    print(image_array_disp.dtype)
                     frame_width = self.camera_widget.width()
                     frame_height = self.camera_widget.height()
                     # Resize to the display size
@@ -324,22 +342,20 @@ if __name__ == '__main__':
                 except Exception as e:
                     print("Exception - action_get_image: " + str(e) + "")
             elif event == 'start':
-                print('Start')
                 self.camera_thread.start()
             elif event == 'stop':
-                print('Stop')
                 self.camera_widget.camera.set_exposure(1000)
                 self.camera_thread.stop()
             elif event == 'expo':
-                print(f'Expo {self.camera_widget.camera.get_exposure()}')
                 self.camera_widget.camera.set_exposure(20000)
 
-        def set_camera(self, camera: CameraIds):
+        def set_camera(self, camera: CameraIds, mode_max: bool = False):
             """
 
             """
             self.camera_thread.set_camera(camera)
             self.camera_widget = CameraIdsWidget(camera, params_disp=True)
+            self.camera_widget.camera.init_camera(mode_max=mode_max)
             self.layout.addWidget(self.camera_widget, 1, 0)
 
         def update_image(self, image_array):
@@ -369,13 +385,12 @@ if __name__ == '__main__':
 
     camera_ids = CameraIds()
     if camera_ids.find_first_camera():
-        print(f'Camera OK')
         device = camera_ids.camera_device
 
     # Test with a Thread
     app = QApplication(sys.argv)
     main_window = MainWindow()
-    main_window.set_camera(camera_ids)
+    main_window.set_camera(camera_ids, mode_max=True)
     main_window.show()
     sys.exit(app.exec())
 
