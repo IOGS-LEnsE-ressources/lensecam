@@ -291,8 +291,12 @@ class CameraIds:
         """Set the mode of acquisition : Continuous or SingleFrame"""
         pass
 
-    def get_image(self) -> np.ndarray:
-        """Collect an image from the camera."""
+    def get_image(self, fast_mode:bool = True) -> np.ndarray:
+        """Collect an image from the camera.
+        :param fast_mode: If True, raw data without any transformation are returned.
+            This mode is required for live display.
+            To get the formatted data (8-10-12 bits), fast_mode must be set as False.
+        """
         if self.camera_connected and self.camera_acquiring:
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
@@ -302,15 +306,18 @@ class CameraIds:
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
             picture = raw_image.get_numpy_3D()
-            # Depending on the color mode - display only in 8 bits mono
-            nb_bits = get_bits_per_pixel(self.get_color_mode())
-            if nb_bits > 8:
-                picture = picture.view(np.uint16)
-                pow_2 = 16-nb_bits
-                picture = picture * 2**pow_2
+            if fast_mode:
+                return picture
             else:
-                picture = picture.view(np.uint8)
-            return picture.squeeze()
+                # Depending on the color mode - display only in 8 bits mono
+                nb_bits = get_bits_per_pixel(self.get_color_mode())
+                if nb_bits > 8:
+                    picture = picture.view(np.uint16)
+                    pow_2 = 16-nb_bits
+                    picture = picture * 2**pow_2
+                else:
+                    picture = picture.view(np.uint8)
+                return picture.squeeze()
         else:
             return None
 

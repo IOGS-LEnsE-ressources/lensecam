@@ -390,7 +390,7 @@ if __name__ == '__main__':
     # Test with a Thread
     app = QApplication(sys.argv)
     main_window = MainWindow()
-    main_window.set_camera(camera_ids, mode_max=True)
+    main_window.set_camera(camera_ids)#, mode_max=True)
     main_window.show()
     sys.exit(app.exec())
 
