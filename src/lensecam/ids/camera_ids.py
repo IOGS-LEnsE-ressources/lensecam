@@ -654,6 +654,17 @@ class CameraIds:
                 return False
         return False
 
+    def is_connected(self) -> bool:
+        """Return True if a camera is connected."""
+        return self.camera_connected
+
+    def get_temperature(self):
+        """Return the temperature of the camera. In Celsius.
+        Not implemented in old devices.
+        """
+        return None
+        # return self.camera_remote.FindNode("DeviceTemperature").Value()
+
 
 if __name__ == "__main__":
     import cv2

@@ -53,14 +53,16 @@ class to communicate with an IDS camera sensor.
 """
 
 import numpy as np
-if __name__ == "__main__":
-    from camera_ids import CameraIds
-    from camera_ids_widget0 import CameraIdsListWidget
-else:
-    from lensecam.ids.camera_ids import CameraIds
-    from lensecam.ids.camera_ids_widget0 import CameraIdsListWidget
+from ids_peak import ids_peak
 
-from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGridLayout
+if __name__ == "__main__":
+    from camera_ids import CameraIds, get_bits_per_pixel
+    from camera_list import CameraList
+else:
+    from lensecam.ids.camera_ids import CameraIds, get_bits_per_pixel
+    from lensecam.ids.camera_list import CameraList
+
+from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGridLayout, QComboBox
 from PyQt6.QtCore import pyqtSignal, Qt
 from lensepy.images.conversion import array_to_qimage, resize_image_ratio
 
@@ -113,24 +115,23 @@ class CameraIdsWidget(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.layout.addWidget(self.camera_display, 0, 0)
         self.setLayout(self.layout)
-
         if self.camera is None:
             self.cameras_list_widget = CameraIdsListWidget()
-            self.layout.addWidget(self.cameras_list_widget, 1, 0)
+            self.layout.addWidget(self.cameras_list_widget, 0, 0)
             # Connect the signal emitted by the ComboList to its action
             self.cameras_list_widget.connected.connect(self.connect_camera)
         else:
+            self.layout.addWidget(self.camera_display, 0, 0)
             self.set_camera(camera=self.camera)
 
     def set_camera(self, camera: CameraIds):
         """
-        
-        :param camera: 
+
+        :param camera:
         :param mode_max: If True, initialize the camera in the color mode with the higher pixel resolution
             else in 8 bits mode.
-        :return: 
+        :return:
         """
         self.camera = camera
 
@@ -145,7 +146,12 @@ class CameraIdsWidget(QWidget):
             cam_dev = self.cameras_list_widget.get_selected_camera_dev()
             self.camera = CameraIds(cam_dev)
             self.camera_connected = True
+
+            self.clear_layout(0, 0)
+            self.clear_layout(1, 0)
+            self.camera_display = QLabel('Image')
             self.camera_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.layout.addWidget(self.camera_display, 0, 0)
             if self.display_params:
                 self.clear_layout(1, 0)
                 self.layout.addWidget(self.camera_display_params, 1, 0)
@@ -237,6 +243,108 @@ class SmallParamsDisplay(QWidget):
         self.camera_expotime_label.setText(expo)
         fps = str(round(camera.get_frame_rate(), 2)) + ' fps'
         self.camera_fps_label.setText(fps)
+
+
+class CameraIdsListWidget(QWidget):
+    """Generate available cameras list.
+
+    Generate a Widget including the list of available cameras and two buttons :
+        * connect : to connect a selected camera ;
+        * refresh : to refresh the list of available cameras.
+
+    :param cam_list: CameraList object that lists available cameras.
+    :type cam_list: CameraList
+    :param cameras_list: list of the available IDS Camera.
+    :type cameras_list: list[tuple[int, str, str]]
+    :param cameras_nb: Number of available cameras.
+    :type cameras_nb: int
+    :param cameras_list_combo: A QComboBox containing the list of the available cameras
+    :type cameras_list_combo: QComboBox
+    :param main_layout: Main layout container of the widget.
+    :type main_layout: QVBoxLayout
+    :param title_label: title displayed in the top of the widget.
+    :type title_label: QLabel
+    :param bt_connect: Graphical button to connect the selected camera
+    :type bt_connect: QPushButton
+    :param bt_refresh: Graphical button to refresh the list of available cameras.
+    :type bt_refresh: QPushButton
+    """
+
+    connected = pyqtSignal(str)
+
+    def __init__(self) -> None:
+        """
+        Default constructor of the class.
+        """
+        super().__init__(parent=None)
+        # Objects linked to the CameraList object
+        self.cam_list = CameraList()
+        self.cameras_list = self.cam_list.get_cam_list()
+        self.cameras_nb = self.cam_list.get_nb_of_cam()
+
+        # Graphical list as QComboBox
+        self.cameras_list_combo = QComboBox()
+
+        # Graphical elements of the interface
+        self.main_layout = QVBoxLayout()
+
+        self.title_label = QLabel('Available cameras')
+
+        self.bt_connect = QPushButton('Connect')
+        self.bt_connect.clicked.connect(self.send_signal_connected)
+        self.bt_refresh = QPushButton('Refresh')
+        self.bt_refresh.clicked.connect(self.refresh_cameras_list_combo)
+
+        if self.cameras_nb == 0:
+            self.bt_connect.setEnabled(False)
+        self.main_layout.addWidget(self.title_label)
+        self.main_layout.addWidget(self.cameras_list_combo)
+        self.main_layout.addWidget(self.bt_connect)
+        self.main_layout.addWidget(self.bt_refresh)
+
+        self.setLayout(self.main_layout)
+        self.refresh_cameras_list_combo()
+
+    def refresh_cameras_list(self) -> None:
+        """Refresh the list of available cameras.
+
+        Update the cameras_list parameter of this class.
+        """
+        self.cam_list.refresh_list()
+        self.cameras_list = self.cam_list.get_cam_list()
+        self.cameras_nb = self.cam_list.get_nb_of_cam()
+        if self.cameras_nb == 0:
+            self.bt_connect.setEnabled(False)
+        else:
+            self.bt_connect.setEnabled(True)
+
+    def refresh_cameras_list_combo(self) -> None:
+        """Refresh the combobox list of available cameras.
+
+        Update the cameras_list_combo parameter of this class.
+        """
+        self.refresh_cameras_list()
+        self.cameras_list_combo.clear()
+        for i, cam in enumerate(self.cameras_list):
+            self.cameras_list_combo.addItem(f'IDS-{cam[1]}')
+
+    def get_selected_camera_dev(self) -> ids_peak.Device:
+        """Return the device object.
+
+        Return the device object from ids_peak API of the selected camera.
+
+        :return: the index number of the selected camera.
+        :rtype: ids_peak.Device
+        """
+        cam_id = self.cameras_list_combo.currentIndex()
+        dev = self.cam_list.get_cam_device(cam_id)
+        return dev
+
+    def send_signal_connected(self, event) -> None:
+        """Send a signal when a camera is selected to be used.
+        """
+        cam_id = self.cameras_list_combo.currentIndex()
+        self.connected.emit('cam:' + str(cam_id) + ':')
 
 
 if __name__ == '__main__':
@@ -390,7 +498,7 @@ if __name__ == '__main__':
     # Test with a Thread
     app = QApplication(sys.argv)
     main_window = MainWindow()
-    main_window.set_camera(camera_ids)#, mode_max=True)
+    main_window.set_camera(camera_ids)  # , mode_max=True)
     main_window.show()
     sys.exit(app.exec())
 
