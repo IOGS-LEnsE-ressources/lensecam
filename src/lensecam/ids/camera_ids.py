@@ -74,6 +74,7 @@ def get_converter_mode(color_mode: str) -> int:
         "RGB8": ids_ipl.PixelFormatName_RGB8
     }[color_mode]
 
+
 def get_bits_per_pixel(color_mode: str) -> int:
     """Return the number of bits per pixel.
 
@@ -89,6 +90,7 @@ def get_bits_per_pixel(color_mode: str) -> int:
         'Mono12': 12,
         'RGB8': 8
     }[color_mode]
+
 
 def check_value_in(val: int, val_max: int, val_min: int = 0):
     """
@@ -106,6 +108,7 @@ def check_value_in(val: int, val_max: int, val_min: int = 0):
 
     """
     return val_min <= val <= val_max
+
 
 class CameraIds:
     """Class to communicate with an IDS camera sensor.
@@ -132,9 +135,9 @@ class CameraIds:
         self.camera_device = camera_device
         if self.camera_device is None:
             self.camera_connected = False
-        else:       # A camera device is connected
+        else:  # A camera device is connected
             self.camera_connected = True
-        self.camera_acquiring = False   # The camera is acquiring
+        self.camera_acquiring = False  # The camera is acquiring
         self.camera_remote = None
         self.data_stream = None
         # Camera parameters
@@ -206,7 +209,7 @@ class CameraIds:
         except Exception as e:
             print("Exception - get_sensor_size: " + str(e) + "")
 
-    def init_camera(self, camera_device=None, mode_max:bool=False ):
+    def init_camera(self, camera_device=None, mode_max: bool = False):
         """"""
         if camera_device is None:
             if self.camera_connected:
@@ -291,7 +294,7 @@ class CameraIds:
         """Set the mode of acquisition : Continuous or SingleFrame"""
         pass
 
-    def get_image(self, fast_mode:bool = True) -> np.ndarray:
+    def get_image(self, fast_mode: bool = True) -> np.ndarray:
         """Collect an image from the camera.
         :param fast_mode: If True, raw data without any transformation are returned.
             This mode is required for live display.
@@ -313,8 +316,8 @@ class CameraIds:
                 nb_bits = get_bits_per_pixel(self.get_color_mode())
                 if nb_bits > 8:
                     picture = picture.view(np.uint16)
-                    pow_2 = 16-nb_bits
-                    picture = picture * 2**pow_2
+                    pow_2 = 16 - nb_bits
+                    picture = picture * 2 ** pow_2
                 else:
                     picture = picture.view(np.uint8)
                 return picture.squeeze()
@@ -375,7 +378,6 @@ class CameraIds:
                 color_modes_list.append(entry.SymbolicValue())
 
         return color_modes_list
-
 
     def set_aoi(self, x0, y0, width, height) -> bool:
         """Set the area of interest (aoi).
@@ -445,7 +447,6 @@ class CameraIds:
         """
         width_max, height_max = self.get_sensor_size()
         return self.set_aoi(0, 0, width_max, height_max)
-
 
     def get_exposure(self) -> float:
         """Return the exposure time in microseconds.
@@ -591,7 +592,47 @@ class CameraIds:
         except Exception as e:
             print("Exception - set frame rate: " + str(e) + "")
 
+    def get_clock_frequency(self) -> float:
+        """Return the clock frequency of the device.
 
+        :return: clock frequency of the device in Hz.
+        :rtype: float
+
+        """
+        return self.camera_remote.FindNode("DeviceClockFrequency").Value()
+
+    def get_clock_frequency_range(self) -> tuple[float, float]:
+        """Return Return the range of the clock frequency of the device.
+
+        :return: the minimum and the maximum value
+            of the clock frequency of the device in Hz.
+        :rtype: tuple[float, float]
+
+        """
+        try:
+            clock_min = self.camera_remote.FindNode("DeviceClockFrequency").Minimum()
+            clock_max = self.camera_remote.FindNode("DeviceClockFrequency").Maximum()
+            return clock_min, clock_max
+        except Exception as e:
+            print("Exception - get range clock frequency: " + str(e) + "")
+
+    def set_clock_frequency(self, clock_frequency: int) -> bool:
+        """Set the clock frequency of the camera.
+
+        :param clock_frequency: Clock Frequency in Hertz.
+        :type clock_frequency: int
+
+        :return: Return true if the Clock Frequency changed.
+        :rtype: bool
+        """
+        try:
+            clock_min, clock_max = self.get_clock_frequency_range()
+            if check_value_in(clock_frequency, clock_max, clock_min):
+                self.camera_remote.FindNode("DeviceClockFrequency").SetValue(clock_frequency)
+                return True
+            return False
+        except Exception as e:
+            print("Exception - set clock frequency: " + str(e) + "")
 
     def __check_range(self, x: int, y: int) -> bool:
         """Check if the coordinates are in the sensor area.
@@ -616,6 +657,7 @@ class CameraIds:
 
 if __name__ == "__main__":
     import cv2
+
     my_cam = CameraIds()
     cam_here = my_cam.find_first_camera()
     print(f'Camera is here ? {cam_here}')
@@ -623,13 +665,13 @@ if __name__ == "__main__":
     cam_connected = my_cam.camera_connected
     print(f'Camera is connected ?? {cam_connected}')
     if cam_connected:
-        my_cam.init_camera(mode_max=True)    # create a remote for the camera
+        my_cam.init_camera(mode_max=True)  # create a remote for the camera
         print(f'W/H = {my_cam.get_sensor_size()}')
 
         # Color modes
         my_cam.list_color_modes()
         # Try to catch an image
-        my_cam.alloc_memory()   # allocate buffer to store raw data from the camera
+        my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
         raw_image = my_cam.get_image()
 
@@ -649,7 +691,7 @@ if __name__ == "__main__":
         my_cam.set_exposure(10000)
         print(f'New Expo = {my_cam.get_exposure()}')
 
-        my_cam.alloc_memory()   # allocate buffer to store raw data from the camera
+        my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
         raw_image = my_cam.get_image()
         # Display image
@@ -679,3 +721,14 @@ if __name__ == "__main__":
     print(f'Black Level change ? {my_cam.set_black_level(25)}')
     print(f'Black Level = {my_cam.get_black_level()}')
     '''
+
+    """clock = self.camera.camera_remote.FindNode("DeviceClockFrequency").Value()
+    print(f'Clock1 = {clock}')
+    self.camera.camera_remote.FindNode("DeviceClockFrequency").SetValue(5000000)
+    clock = self.camera.camera_remote.FindNode("DeviceClockFrequency").Value()
+    print(f'Clock2 = {clock}')
+
+    fps_min, fps_max = self.camera.get_frame_rate_range()
+
+    print(f'FPS = {fps_min}, {fps_max}')
+    self.camera.set_frame_rate(1.6)"""
