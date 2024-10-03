@@ -61,7 +61,7 @@ def get_converter_mode(color_mode: str) -> int:
     """Return the converter display mode.
 
     :param color_mode: color mode of the camera
-        ('Mono8', 'Mono10', 'Mono12', 'RGB8' or 'BayerRG8')
+        ('Mono8', 'Mono10', 'Mono12' or 'RGB8')
     :type color_mode: str
     :return: corresponding converter display mode
     :rtype: int
@@ -71,8 +71,7 @@ def get_converter_mode(color_mode: str) -> int:
         "Mono8": ids_ipl.PixelFormatName_Mono8,
         "Mono10": ids_ipl.PixelFormatName_Mono10,
         "Mono12": ids_ipl.PixelFormatName_Mono12,
-        "RGB8": ids_ipl.PixelFormatName_RGB8,
-        "BayerRG8": ids_ipl.PixelFormatName_BayerRG8
+        "RGB8": ids_ipl.PixelFormatName_RGB8
     }[color_mode]
 
 
@@ -89,8 +88,7 @@ def get_bits_per_pixel(color_mode: str) -> int:
         'Mono8': 8,
         'Mono10': 10,
         'Mono12': 12,
-        'RGB8': 8,
-        'BayerRG8': 8
+        'RGB8': 8
     }[color_mode]
 
 
@@ -129,7 +127,6 @@ class CameraIds:
         * 'Mono10' : monochromatic mode in 10 bits raw data
         * 'Mono12' : monochromatic mode in 12 bits raw data
         * 'RGB8' : RGB mode in 8 bits raw data
-        * 'BayerRG8' : RGB mode in 8 bits raw data
 
     """
 

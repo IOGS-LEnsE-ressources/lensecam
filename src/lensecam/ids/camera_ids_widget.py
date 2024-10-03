@@ -129,8 +129,6 @@ class CameraIdsWidget(QWidget):
         """
 
         :param camera:
-        :param mode_max: If True, initialize the camera in the color mode with the higher pixel resolution
-            else in 8 bits mode.
         :return:
         """
         self.camera = camera
