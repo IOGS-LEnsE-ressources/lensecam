@@ -118,6 +118,12 @@ class CameraBaslerListWidget(QWidget):
         for i, cam in enumerate(self.cameras_list):
             self.cameras_list_combo.addItem(f'BAS-{cam[1]}')
 
+    def get_selected_camera_index(self):
+        """Return the index of the selected device.
+        :rtype: pylon.TlFactory
+        """
+        return self.cameras_list_combo.currentIndex()
+
     def get_selected_camera_dev(self):
         """Return the device object.
 
