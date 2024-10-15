@@ -123,13 +123,15 @@ class CameraBasler:
         :return: True if an IDS camera is connected.
         :rtype: bool
         """
-        my_cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-        if my_cam is not None:
-            self.camera_device = my_cam
-            self.camera_connected = True
-            return True
-        else:
-            return False
+        tlFactory = pylon.TlFactory.GetInstance()
+        devices = tlFactory.EnumerateDevices()
+        if len(devices) > 0:
+            my_cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+            if my_cam is not None:
+                self.camera_device = my_cam
+                self.camera_connected = True
+                return True
+        return False
 
     def is_camera_connected(self) -> bool:
         """Return the status of the device.
