@@ -15,6 +15,7 @@ with wrappers contained in the lensecam package (from the LEnsE)
 
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
+import time
 
 class CameraThread(QThread):
     """
@@ -32,12 +33,14 @@ class CameraThread(QThread):
         """"""
         self.camera = camera
 
-    def stop(self):
+    def stop(self, timeout: bool=True):
+        """Stop thread linked to the camera."""
         if self.camera.camera_acquiring is True:
             self.running = False
             self.stopping = True
-            while self.stopping == True:
-                pass
+            if timeout:
+                while self.stopping == True:
+                    pass
             self.camera.stop_acquisition()
             self.camera.free_memory()
 
@@ -58,6 +61,7 @@ class CameraThread(QThread):
             while self.running:
                 image_array = self.camera.get_image()
                 self.image_acquired.emit(image_array)
+                time.sleep(0.05)
                 self.stopping = False
         except Exception as e:
             print(f'Thread Running - Exception - {e}')

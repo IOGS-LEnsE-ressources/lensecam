@@ -170,6 +170,9 @@ class CameraBasler:
         if self.camera_device.IsOpen():
             self.camera_device.Close()
 
+    def destroy_camera(self) -> None:
+        self.camera_device = None
+
     def get_cam_info(self) -> tuple[str, str]:
         """Return the serial number and the name.
 
