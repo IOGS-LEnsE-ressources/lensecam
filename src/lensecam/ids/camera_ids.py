@@ -132,17 +132,30 @@ class CameraIds:
 
     def __init__(self, camera_device: ids_peak.Device = None) -> None:
         """"""
-        self.camera_device = camera_device
-        if self.camera_device is None:
-            self.camera_connected = False
-        else:  # A camera device is connected
+        if camera_device is not None:
+            self.camera_device = camera_device
             self.camera_connected = True
+        else:
+            self.camera_device = None
+            self.camera_connected = False
         self.camera_acquiring = False  # The camera is acquiring
         self.camera_remote = None
         self.data_stream = None
-        # Camera parameters
-        self.color_mode = None
-        self.nb_bits_per_pixels = 8
+        # Camera informations
+        self.serial_no, self.camera_name = self.get_cam_info()
+        self.width_max, self.height_max = self.get_sensor_size()
+        self.nb_bits_per_pixels: int = 8
+        self.color_mode = 'Mono8'  # default
+        #self.set_color_mode('Mono8')
+        # AOI size
+        self.aoi_x0: int = 0
+        self.aoi_y0: int = 0
+        self.aoi_width: int = self.width_max
+        self.aoi_height: int = self.height_max
+        # Test if camera is connected.
+        self.is_camera_connected()
+        self.set_aoi(self.aoi_x0, self.aoi_y0, self.aoi_width, self.aoi_height)
+
 
     def list_cameras(self):
         pass
@@ -157,18 +170,15 @@ class CameraIds:
         ids_peak.Library.Initialize()
         # Create a DeviceManager object
         device_manager = ids_peak.DeviceManager.Instance()
-        try:
-            # Update the DeviceManager
-            device_manager.Update()
-            # Exit program if no device was found
-            if device_manager.Devices().empty():
-                print("No device found. Exiting Program.")
-                return False
-            self.camera_device = device_manager.Devices()[0].OpenDevice(ids_peak.DeviceAccessType_Control)
-            self.camera_connected = True
-            return True
-        except Exception as e:
-            print('Exception - find_first_camera : {e}')
+        # Update the DeviceManager
+        device_manager.Update()
+        # Exit program if no device was found
+        if device_manager.Devices().empty():
+            print("No device found. Exiting Program.")
+            return False
+        self.camera_device = device_manager.Devices()[0].OpenDevice(ids_peak.DeviceAccessType_Control)
+        self.camera_connected = True
+        return True
 
     def get_cam_info(self) -> tuple[str, str]:
         """Return the serial number and the name.
@@ -181,12 +191,10 @@ class CameraIds:
 
         """
         serial_no, camera_name = None, None
-        try:
+        if self.camera_device is not None:
             camera_name = self.camera_device.ModelName()
             serial_no = self.camera_device.SerialNumber()
-            return serial_no, camera_name
-        except Exception as e:
-            print("Exception - get_cam_info: " + str(e) + "")
+        return serial_no, camera_name
 
     def get_sensor_size(self) -> tuple[int, int]:
         """Return the width and the height of the sensor.
@@ -202,16 +210,20 @@ class CameraIds:
         (1936, 1216)
 
         """
-        try:
+        if self.camera_device is not None:
             max_height = self.camera_remote.FindNode("HeightMax").Value()
             max_width = self.camera_remote.FindNode("WidthMax").Value()
-            return max_width, max_height
-        except Exception as e:
-            print("Exception - get_sensor_size: " + str(e) + "")
+        else:
+            max_height = 0
+            max_width = 0
+        return max_width, max_height
 
     def init_camera(self, camera_device=None, mode_max: bool = False):
         """"""
-        if camera_device is None:
+        print(f'Init Cam {camera_device}')
+        if camera_device is not None:
+            self.camera_device = camera_device
+        else:
             if self.camera_connected:
                 self.camera_remote = self.camera_device.RemoteDevice().NodeMaps()[0]
                 self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
@@ -226,12 +238,6 @@ class CameraIds:
                     self.set_color_mode(max_mode)
                     self.nb_bits_per_pixels = get_bits_per_pixel(max_mode)
 
-        else:
-            self.camera_device = camera_device
-            self.camera_remote = camera_device.RemoteDevice().NodeMaps()[0]
-            self.camera_remote.FindNode("TriggerSelector").SetCurrentEntry("ExposureStart")
-            self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
-            self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
             self.camera_connected = True
 
     def alloc_memory(self) -> bool:
@@ -256,6 +262,14 @@ class CameraIds:
             return True
         else:
             return False
+
+    def is_camera_connected(self) -> bool:
+        """Return the status of the device.
+
+        :return: true if the device could be opened, and then close the device
+        :rtype: bool (or error)
+        """
+        return self.camera_connected
 
     def free_memory(self) -> None:
         """
@@ -351,15 +365,11 @@ class CameraIds:
         :type color_mode: str, default 'Mono8'
 
         """
-        try:
-            if self.camera_connected:
-                self.stop_acquisition()
-            self.camera_remote.FindNode("PixelFormat").SetCurrentEntry(color_mode)
-            self.color_mode = color_mode
-            self.nb_bits_per_pixels = get_bits_per_pixel(color_mode)
-            # self.set_display_mode(color_mode)
-        except Exception as e:
-            print("Exception - set_color_mode: " + str(e) + "")
+        if self.camera_connected:
+            self.stop_acquisition()
+        self.camera_remote.FindNode("PixelFormat").SetCurrentEntry(color_mode)
+        self.color_mode = color_mode
+        self.nb_bits_per_pixels = get_bits_per_pixel(color_mode)
 
     def list_color_modes(self):
         """
@@ -681,6 +691,8 @@ if __name__ == "__main__":
 
         # Color modes
         my_cam.list_color_modes()
+
+        my_cam.set_color_mode('Mono8')
         # Try to catch an image
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
@@ -712,7 +724,6 @@ if __name__ == "__main__":
 
         my_cam.stop_acquisition()
         my_cam.free_memory()
-
     '''
     if my_cam.set_aoi(20, 40, 100, 200):
         print('AOI OK')
