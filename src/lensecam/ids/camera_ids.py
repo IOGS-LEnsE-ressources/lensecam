@@ -71,7 +71,10 @@ def get_converter_mode(color_mode: str) -> int:
         "Mono8": ids_ipl.PixelFormatName_Mono8,
         "Mono10": ids_ipl.PixelFormatName_Mono10,
         "Mono12": ids_ipl.PixelFormatName_Mono12,
-        "RGB8": ids_ipl.PixelFormatName_RGB8
+        "RGB8": ids_ipl.PixelFormatName_RGB8,
+        "BayerRG8": ids_ipl.PixelFormatName_BayerRG8,
+        "BayerRG10": ids_ipl.PixelFormatName_BayerRG10,
+        "BayerRG12": ids_ipl.PixelFormatName_BayerRG12
     }[color_mode]
 
 
@@ -88,7 +91,10 @@ def get_bits_per_pixel(color_mode: str) -> int:
         'Mono8': 8,
         'Mono10': 10,
         'Mono12': 12,
-        'RGB8': 8
+        'RGB8': 8,
+        'BayerRG8': 8,
+        'BayerRG10': 10,
+        'BayerRG12': 12
     }[color_mode]
 
 
@@ -311,7 +317,13 @@ class CameraIds:
             raw_image = ids_ipl.Image.CreateFromSizeAndBuffer(buffer.PixelFormat(), buffer.BasePtr(),
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
-            picture = raw_image.get_numpy_3D()
+            if 'Mono' in self.color_mode:
+                picture = raw_convert.get_numpy_3D().copy()
+            else:
+                raw_convert = raw_image.ConvertTo(ids_ipl.PixelFormatName_BGRa8, ids_ipl.ConversionMode_Fast)
+                picture = raw_convert.get_numpy_3D().copy()
+                if len(picture.shape) > 2:
+                    picture = picture[:, :, :3]
             if fast_mode:
                 return picture
             else:
