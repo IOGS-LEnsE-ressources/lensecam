@@ -52,6 +52,7 @@ class to communicate with an IDS camera sensor.
 
 """
 
+import time
 import numpy as np
 from ids_peak import ids_peak
 import ids_peak_ipl.ids_peak_ipl as ids_ipl
@@ -144,6 +145,7 @@ class CameraIds:
         else:  # A camera device is connected
             self.camera_connected = True
         self.camera_acquiring = False  # The camera is acquiring
+        self.__camera_acquiring = False  # The camera is acquiring old value
         self.camera_remote = None
         self.data_stream = None
         # Camera parameters
@@ -174,7 +176,7 @@ class CameraIds:
             self.camera_connected = True
             return True
         except Exception as e:
-            print('Exception - find_first_camera : {e}')
+            print(f'Exception - find_first_camera : {e}')
 
     def get_cam_info(self) -> tuple[str, str]:
         """Return the serial number and the name.
@@ -271,6 +273,7 @@ class CameraIds:
 
     def start_acquisition(self) -> None:
         """Start acquisition"""
+        time.sleep(0.02)
         if self.camera_acquiring is False:
             try:
                 self.data_stream.StartAcquisition(ids_peak.AcquisitionStartMode_Default)
@@ -278,17 +281,20 @@ class CameraIds:
                 self.camera_remote.FindNode("AcquisitionStart").Execute()
                 self.camera_remote.FindNode("AcquisitionStart").WaitUntilDone()
                 self.camera_acquiring = True
+                self.__camera_acquiring = True
             except Exception as e:
                 print(f'Exception start_acquisition {e}')
 
     def stop_acquisition(self):
         """Stop acquisition"""
+        time.sleep(0.02)
         if self.camera_acquiring is True:
             self.camera_remote.FindNode("AcquisitionStop").Execute()
             self.camera_remote.FindNode("AcquisitionStop").WaitUntilDone()
             self.camera_remote.FindNode("TLParamsLocked").SetValue(0)
             self.data_stream.StopAcquisition()
             self.camera_acquiring = False
+            self.__camera_acquiring = False
 
     def disconnect(self) -> None:
         """Disconnect the camera.
@@ -310,6 +316,7 @@ class CameraIds:
             To get the formatted data (8-10-12 bits), fast_mode must be set as False.
         """
         if self.camera_connected and self.camera_acquiring:
+            time.sleep(0.02)
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
             buffer = self.data_stream.WaitForFinishedBuffer(1000)
@@ -317,18 +324,20 @@ class CameraIds:
             raw_image = ids_ipl.Image.CreateFromSizeAndBuffer(buffer.PixelFormat(), buffer.BasePtr(),
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
+
             if 'Mono' in self.color_mode:
-                picture = raw_convert.get_numpy_3D().copy()
+                picture = raw_image.get_numpy_3D().copy()
             else:
                 raw_convert = raw_image.ConvertTo(ids_ipl.PixelFormatName_BGRa8, ids_ipl.ConversionMode_Fast)
                 picture = raw_convert.get_numpy_3D().copy()
                 if len(picture.shape) > 2:
                     picture = picture[:, :, :3]
+
             if fast_mode:
                 return picture
             else:
                 # Depending on the color mode - display only in 8 bits mono
-                nb_bits = get_bits_per_pixel(self.get_color_mode())
+                nb_bits = get_bits_per_pixel(self.color_mode)
                 if nb_bits > 8:
                     picture = picture.view(np.uint16)
                     pow_2 = 16 - nb_bits
@@ -350,11 +359,14 @@ class CameraIds:
 
         """
         try:
+            print(f'Get Color Mode')
             # Test if the camera is opened
             if self.camera_connected:
                 self.stop_acquisition()
             pixel_format = self.camera_remote.FindNode("PixelFormat").CurrentEntry().SymbolicValue()
             self.color_mode = pixel_format
+            if self.__camera_acquiring:
+                self.start_acquisition()
             return pixel_format
         except Exception as e:
             print("Exception - get_color_mode: " + str(e) + "")
@@ -371,8 +383,11 @@ class CameraIds:
                 self.stop_acquisition()
             self.camera_remote.FindNode("PixelFormat").SetCurrentEntry(color_mode)
             self.color_mode = color_mode
+            self.color_mode = self.get_color_mode()
             self.nb_bits_per_pixels = get_bits_per_pixel(color_mode)
             # self.set_display_mode(color_mode)
+            if self.__camera_acquiring:
+                self.start_acquisition()
         except Exception as e:
             print("Exception - set_color_mode: " + str(e) + "")
 
@@ -695,13 +710,14 @@ if __name__ == "__main__":
         print(f'W/H = {my_cam.get_sensor_size()}')
 
         # Color modes
-        my_cam.list_color_modes()
+        print(my_cam.list_color_modes())
         # Try to catch an image
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
-        raw_image = my_cam.get_image()
+        raw_image = my_cam.get_image(fast_mode=False)
 
-        print(raw_image.shape)
+        print(f'Main {raw_image.shape}')
+        print(f'Type {raw_image.dtype}')
 
         # Display image
         cv2.imshow('image', raw_image)
@@ -719,7 +735,7 @@ if __name__ == "__main__":
 
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
-        raw_image = my_cam.get_image()
+        raw_image = my_cam.get_image(fast_mode=False)
         # Display image
         cv2.imshow('image', raw_image)
         cv2.waitKey(0)
