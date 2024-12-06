@@ -319,7 +319,7 @@ class CameraIds:
             time.sleep(0.02)
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
-            buffer = self.data_stream.WaitForFinishedBuffer(1000)
+            buffer = self.data_stream.WaitForFinishedBuffer(4000)
             # convert to RGB
             raw_image = ids_ipl.Image.CreateFromSizeAndBuffer(buffer.PixelFormat(), buffer.BasePtr(),
                                                               buffer.Size(), buffer.Width(), buffer.Height())
