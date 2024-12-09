@@ -260,6 +260,22 @@ class CameraBasler:
         except Exception as e:
             print("Exception: " + str(e) + "")
 
+    def list_color_modes(self):
+        """
+        Return a list of the different available color modes.
+        """
+        color_list = []
+        self.camera_device.Open()
+        nodemap = self.camera_device.GetNodeMap()
+        pixel_format_node = nodemap.GetNode("PixelFormat")
+        if pixel_format_node:
+            # Récupérer les modes de couleurs possibles
+            pixel_formats = pixel_format_node.GetSymbolics()
+            for pixel_format in pixel_formats:
+                color_list.append(pixel_format)
+        self.camera_device.Close()
+        return color_list
+
     def get_image(self) -> numpy.ndarray:
         """Get one image.
 
