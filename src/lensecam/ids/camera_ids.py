@@ -56,6 +56,7 @@ import time
 import numpy as np
 from ids_peak import ids_peak
 import ids_peak_ipl.ids_peak_ipl as ids_ipl
+from matplotlib import pyplot as plt
 
 
 def get_converter_mode(color_mode: str) -> int:
@@ -177,6 +178,9 @@ class CameraIds:
             return True
         except Exception as e:
             print(f'Exception - find_first_camera : {e}')
+
+    def get_camera_device(self):
+        return self.camera_device
 
     def get_cam_info(self) -> tuple[str, str]:
         """Return the serial number and the name.
@@ -709,6 +713,7 @@ if __name__ == "__main__":
         my_cam.init_camera(mode_max=True)  # create a remote for the camera
         print(f'W/H = {my_cam.get_sensor_size()}')
 
+        '''
         # Color modes
         print(my_cam.list_color_modes())
         # Try to catch an image
@@ -726,24 +731,59 @@ if __name__ == "__main__":
 
         my_cam.stop_acquisition()
         my_cam.free_memory()
+        '''
 
         ## Change parameters
         # Change exposure time
         print(f'Old Expo = {my_cam.get_exposure()}')
-        my_cam.set_exposure(10000)
+        my_cam.set_clock_frequency(10)
+        my_cam.set_frame_rate(5)
+        my_cam.set_exposure(1000)
+        my_cam.set_black_level(255)
+        my_cam.set_color_mode('Mono10')
         print(f'New Expo = {my_cam.get_exposure()}')
+        print(f'COlor Mode = {my_cam.get_color_mode()}')
 
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
-        raw_image = my_cam.get_image(fast_mode=False)
-        # Display image
-        cv2.imshow('image', raw_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        raw_image = my_cam.get_image(fast_mode=True)
+        raw_image2 = raw_image.view(np.uint16).copy().squeeze()
 
         my_cam.stop_acquisition()
         my_cam.free_memory()
 
+        my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
+        my_cam.start_acquisition()
+        raw_image = my_cam.get_image(fast_mode=True)
+        raw_image2 = raw_image.view(np.uint16).copy().squeeze()
+
+        my_cam.stop_acquisition()
+        my_cam.free_memory()
+
+        time.sleep(2)
+
+        my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
+        my_cam.start_acquisition()
+        raw_image = my_cam.get_image(fast_mode=True)
+        raw_image2 = raw_image.view(np.uint16).copy().squeeze()
+
+        my_cam.stop_acquisition()
+        my_cam.free_memory()
+
+        # Histogram
+        print(f'Raw Image Shape = {raw_image2.shape}')
+        print(f'Raw Image Max = {np.max(raw_image2)}')
+        histogram = cv2.calcHist([raw_image2], [0], None, [1024], [0, 1024])
+        plt.figure()
+        plt.title("Grayscale Image Histogram")
+        plt.xlabel("Pixel Intensity")
+        plt.ylabel("Number of Pixels")
+        # Create a range of values (0 to 255) for the x-axis
+        x = np.arange(1024)
+        # Plot the histogram as bars
+        plt.bar(x, histogram[:, 0], width=1, color='black')
+        plt.xlim([100, 300])  # Limits for the x-axis
+        plt.show()
     '''
     if my_cam.set_aoi(20, 40, 100, 200):
         print('AOI OK')
