@@ -702,7 +702,48 @@ class CameraIds:
 
 if __name__ == "__main__":
     import cv2
+    import threading as th
 
+    def init_camera(my_cam):
+        print(f'Old Expo = {my_cam.get_exposure()}')
+        my_cam.set_clock_frequency(10)
+        my_cam.set_frame_rate(5)
+        my_cam.set_exposure(1000)
+        my_cam.set_black_level(255)
+        my_cam.set_color_mode('Mono10')
+        print(f'New Expo = {my_cam.get_exposure()}')
+        print(f'COlor Mode = {my_cam.get_color_mode()}')
+
+    def capture_image(my_cam):
+        print('Capture')
+        '''
+        my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
+        my_cam.start_acquisition()
+        raw_image = my_cam.get_image(fast_mode=True)
+        raw_image2 = raw_image.view(np.uint16).copy().squeeze()
+        my_cam.stop_acquisition()
+        my_cam.free_memory()
+        histogram = cv2.calcHist([raw_image2], [0], None, [1024], [0, 1024])
+        display_histo(histogram)
+        '''
+        th.Timer(1, capture_image, kwargs={"my_cam": my_cam}).start()
+
+    def display_histo(histogram):
+        plt.figure()
+        plt.title("Grayscale Image Histogram")
+        plt.xlabel("Pixel Intensity")
+        plt.ylabel("Number of Pixels")
+        # Create a range of values (0 to 255) for the x-axis
+        x = np.arange(1024)
+        # Plot the histogram as bars
+        plt.bar(x, histogram[:, 0], width=1, color='black')
+        plt.xlim([100, 300])  # Limits for the x-axis
+        plt.show()
+
+    my_cam = CameraIds()
+    capture_image(my_cam)
+
+    '''
     my_cam = CameraIds()
     cam_here = my_cam.find_first_camera()
     print(f'Camera is here ? {cam_here}')
@@ -713,7 +754,6 @@ if __name__ == "__main__":
         my_cam.init_camera(mode_max=True)  # create a remote for the camera
         print(f'W/H = {my_cam.get_sensor_size()}')
 
-        '''
         # Color modes
         print(my_cam.list_color_modes())
         # Try to catch an image
@@ -731,7 +771,6 @@ if __name__ == "__main__":
 
         my_cam.stop_acquisition()
         my_cam.free_memory()
-        '''
 
         ## Change parameters
         # Change exposure time
@@ -784,7 +823,7 @@ if __name__ == "__main__":
         plt.bar(x, histogram[:, 0], width=1, color='black')
         plt.xlim([100, 300])  # Limits for the x-axis
         plt.show()
-    '''
+    
     if my_cam.set_aoi(20, 40, 100, 200):
         print('AOI OK')
     my_cam.free_memory()
@@ -792,8 +831,6 @@ if __name__ == "__main__":
     my_cam.trigger()
 
 
-    '''
-    '''
     print(f'FPS = {my_cam.get_frame_rate()}')
     print(f'FPS_range = {my_cam.get_frame_rate_range()}')
     print(f'FPS change ? {my_cam.set_frame_rate(10)}')
@@ -803,14 +840,3 @@ if __name__ == "__main__":
     print(f'Black Level change ? {my_cam.set_black_level(25)}')
     print(f'Black Level = {my_cam.get_black_level()}')
     '''
-
-    """clock = self.camera.camera_remote.FindNode("DeviceClockFrequency").Value()
-    print(f'Clock1 = {clock}')
-    self.camera.camera_remote.FindNode("DeviceClockFrequency").SetValue(5000000)
-    clock = self.camera.camera_remote.FindNode("DeviceClockFrequency").Value()
-    print(f'Clock2 = {clock}')
-
-    fps_min, fps_max = self.camera.get_frame_rate_range()
-
-    print(f'FPS = {fps_min}, {fps_max}')
-    self.camera.set_frame_rate(1.6)"""
