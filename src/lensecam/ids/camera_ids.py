@@ -182,6 +182,11 @@ class CameraIds:
     def get_camera_device(self):
         return self.camera_device
 
+    def get_log_mode(self):
+        #self.camera_remote.FindNode("LogMode").SetCurrentEntry('Off')
+        log_mode = self.camera_remote.FindNode("LogMode").CurrentEntry().SymbolicValue()
+        print(f'Log Mode = {log_mode}')
+
     def get_cam_info(self) -> tuple[str, str]:
         """Return the serial number and the name.
 
@@ -704,44 +709,57 @@ if __name__ == "__main__":
     import cv2
     import threading as th
 
-    def init_camera(my_cam):
+    displayed = False
+    image = None
+
+    def init_camera_params(my_cam):
+        global displayed
         print(f'Old Expo = {my_cam.get_exposure()}')
         my_cam.set_clock_frequency(10)
-        my_cam.set_frame_rate(5)
-        my_cam.set_exposure(1000)
+        my_cam.set_frame_rate(2)
+        my_cam.set_exposure(100)
         my_cam.set_black_level(255)
         my_cam.set_color_mode('Mono10')
         print(f'New Expo = {my_cam.get_exposure()}')
         print(f'COlor Mode = {my_cam.get_color_mode()}')
+        displayed = False
 
     def capture_image(my_cam):
+        global image
+        global displayed
         print('Capture')
-        '''
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
         raw_image = my_cam.get_image(fast_mode=True)
-        raw_image2 = raw_image.view(np.uint16).copy().squeeze()
+        image = raw_image.view(np.uint16).copy().squeeze()
         my_cam.stop_acquisition()
         my_cam.free_memory()
-        histogram = cv2.calcHist([raw_image2], [0], None, [1024], [0, 1024])
-        display_histo(histogram)
-        '''
+        displayed = True
         th.Timer(1, capture_image, kwargs={"my_cam": my_cam}).start()
 
-    def display_histo(histogram):
+    def display_histo(image):
+        histogram = cv2.calcHist([image], [0], None, [1024], [0, 1024])
         plt.figure()
-        plt.title("Grayscale Image Histogram")
-        plt.xlabel("Pixel Intensity")
-        plt.ylabel("Number of Pixels")
+        #plt.title("Grayscale Image Histogram")
+        #plt.xlabel("Pixel Intensity")
+        #plt.ylabel("Number of Pixels")
         # Create a range of values (0 to 255) for the x-axis
         x = np.arange(1024)
         # Plot the histogram as bars
         plt.bar(x, histogram[:, 0], width=1, color='black')
-        plt.xlim([100, 300])  # Limits for the x-axis
+        plt.xlim([0, 300])  # Limits for the x-axis
         plt.show()
 
     my_cam = CameraIds()
+    my_cam.find_first_camera()
+    my_cam.init_camera(mode_max=True)
+    init_camera_params(my_cam)
     capture_image(my_cam)
+
+    while True:
+        if displayed:
+            display_histo(image)
+            displayed = False
 
     '''
     my_cam = CameraIds()
