@@ -334,7 +334,12 @@ class CameraIds:
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
 
-            if 'Mono' in self.color_mode:
+            if self.color_mode == 'Mono12g24IDS': # NOT YET IMPLEMENTED FOR CONVERSION ! See __init__.py
+                raw_convert = raw_image.ConvertTo(ids_ipl.PixelFormatName_Mono12g24IDS,
+                                                  ids_ipl.ConversionMode_Fast)
+                print(type(raw_convert))
+                picture = raw_convert.get_numpy_3D().copy()
+            elif 'Mono' in self.color_mode:
                 picture = raw_image.get_numpy_3D().copy()
             else:
                 raw_convert = raw_image.ConvertTo(ids_ipl.PixelFormatName_BGRa8, ids_ipl.ConversionMode_Fast)
