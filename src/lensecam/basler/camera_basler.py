@@ -109,6 +109,12 @@ class CameraBasler:
         # Test if camera is connected.
         self.is_camera_connected()
         self.set_aoi(self.aoi_x0, self.aoi_y0, self.aoi_width, self.aoi_height)
+        # Set Gamma Correction to 1.0 (no correction)
+        # Set the Color Space to Off (no gamma correction)
+        self.camera_device.Open()
+        self.camera_device.Gamma.Value = 1.0
+        self.camera_device.BslColorSpace.Value = "Off"
+        self.camera_device.Close()
 
     def alloc_memory(self) -> bool:
         """Alloc the memory to get an image from the camera."""
