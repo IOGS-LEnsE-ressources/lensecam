@@ -114,6 +114,7 @@ class CameraBasler:
         self.camera_device.Open()
         self.camera_device.Gamma.Value = 1.0
         self.camera_device.BslColorSpace.Value = "Off"
+        self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
         self.camera_device.Close()
 
     def alloc_memory(self) -> bool:
