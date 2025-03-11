@@ -315,7 +315,7 @@ class CameraBasler:
 
             while self.camera_device.IsGrabbing():
                 grabResult = self.camera_device.RetrieveResult(
-                    1000,
+                    3000,
                     pylon.TimeoutHandling_ThrowException)
                 if grabResult.GrabSucceeded():
                     # Access the image data.
