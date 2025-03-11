@@ -94,6 +94,15 @@ class CameraBasler:
         if cam_dev is not None:
             self.camera_device = cam_dev
         self.converter = pylon.ImageFormatConverter()
+        # Set Gamma Correction to 1.0 (no correction)
+        # Set the Color Space to Off (no gamma correction)
+        self.camera_device.Open()
+        self.camera_device.UserSetSelector = "Default"
+        self.camera_device.UserSetLoad.Execute()
+        self.camera_device.Gamma.Value = 1.0
+        self.camera_device.BslColorSpace.Value = "Off"
+        self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
+        self.camera_device.Close()
         # Camera informations
         self.serial_no, self.camera_name = self.get_cam_info()
         self.width_max, self.height_max = self.get_sensor_size()
@@ -109,13 +118,7 @@ class CameraBasler:
         # Test if camera is connected.
         self.is_camera_connected()
         self.set_aoi(self.aoi_x0, self.aoi_y0, self.aoi_width, self.aoi_height)
-        # Set Gamma Correction to 1.0 (no correction)
-        # Set the Color Space to Off (no gamma correction)
-        self.camera_device.Open()
-        self.camera_device.Gamma.Value = 1.0
-        self.camera_device.BslColorSpace.Value = "Off"
-        self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
-        self.camera_device.Close()
+
 
     def alloc_memory(self) -> bool:
         """Alloc the memory to get an image from the camera."""
@@ -359,8 +362,10 @@ class CameraBasler:
         """
         if self.__check_range(x0, y0) is False or self.__check_range(x0 + w, y0 + h) is False:
             return False
+        '''
         if x0 % 4 != 0 or y0 % 4 != 0:
             return False
+        '''
         self.aoi_x0 = x0
         self.aoi_y0 = y0
         self.aoi_width = w
@@ -381,6 +386,7 @@ class CameraBasler:
             return True
         except Exception as e:
             print("Exception: " + str(e) + "")
+            return False
 
     def get_aoi(self) -> tuple[int, int, int, int]:
         """Return the area of interest (aoi).
@@ -502,7 +508,7 @@ class CameraBasler:
         except Exception as e:
             print("Exception: " + str(e) + "")
 
-    def set_frame_rate(self, fps):
+    def set_frame_rate(self, fps) -> bool:
         """Set the frame rate in frames per second.
 
         :param fps: frame rate in frames per second.
@@ -518,8 +524,10 @@ class CameraBasler:
                 self.camera_device.AcquisitionFrameRateEnable.SetValue(True)
                 self.camera_device.AcquisitionFrameRate.SetValue(fps)
                 self.camera_device.Close()
+            return True
         except Exception as e:
             print("Exception: " + str(e) + "")
+            return False
 
     def get_black_level(self):
         """Return the blacklevel.
@@ -609,10 +617,13 @@ class CameraBasler:
         :return: Return true if the Clock Frequency changed.
         :rtype: bool
         """
-        pass
+        return False
 
 
 if __name__ == "__main__":
+    import time
+    import numpy as np
+    from matplotlib import pyplot as plt
     '''
     from camera_list import CameraList
 
@@ -638,23 +649,65 @@ if __name__ == "__main__":
     my_cam = CameraBasler(my_cam_dev)
     my_cam.init_camera()
 
-    # Check the colormode
-    print(my_cam.get_color_mode())
+    if my_cam.set_frame_rate(5):
+        print('FPS  OK')
 
     # Change colormode to Mono12
     my_cam.set_color_mode('Mono12')
     my_cam.set_display_mode('Mono12')
     print(my_cam.get_color_mode())
 
-    # Test to catch one image
-    images = my_cam.get_images()
-    print(images[0].shape)
+    # Set AOI
+    w = 400
+    y0 = (1936//2)-(w//2)
+    x0 = (1216//2)-(w//2)
+    print(f'x0 = {x0} / y0 = {y0} / w = {w}')
+    if my_cam.set_aoi(x0, y0, w, w):
+        print('AOI OK')
+    if my_cam.set_black_level(10):
+        print('BL = 10')
 
+    # Test with different exposure time
+    expo_time_list = [20, 20000, 100000, 250000, 500000, 1000000, 1500000, 2000000]
+    mean_value = []
+    stddev_value = []
+
+    for expo_time in expo_time_list:
+        print(expo_time)
+        my_cam.set_exposure(expo_time)
+        time.sleep(0.1)
+        my_cam.camera_device.Open()
+        print(f'FPS = {my_cam.camera_device.ResultingFrameRate.Value}')
+        my_cam.camera_device.Close()
+        time.sleep(0.1)
+        images = my_cam.get_images(1)
+        time.sleep(0.1)
+
+        print(images[0].dtype)
+        m_v = np.mean(images)
+        std_v = np.std(images)
+        mean_value.append(m_v)
+        stddev_value.append(std_v)
+
+    expo_times = np.array(expo_time_list)
+    mean_value = np.array(mean_value)
+    mean_value = mean_value - mean_value[0]
+
+    plt.figure()
+    plt.plot(expo_times, mean_value)
+    plt.title('Mean value of intensity')
+    plt.figure()
+    plt.plot(expo_times, np.array(stddev_value))
+    plt.title('Standard deviation value of intensity')
+    plt.show()
+
+    '''
     # display image
     from matplotlib import pyplot as plt
 
     plt.imshow(images[0], interpolation='nearest', cmap='gray')
     plt.show()
+    '''
 
     '''
     if my_cam.set_aoi(200, 300, 500, 400):
