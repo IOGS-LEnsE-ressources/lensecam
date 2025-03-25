@@ -51,7 +51,7 @@ camera.BslBrightness.Value = 0
 camera.BslContrastMode.Value = "Linear"
 camera.BslContrast.Value = 0
 
-camera.BslAcquisitionStopMode.Value = "CompleteExposure"
+camera.BslAcquisitionStopMode.Value = "AbortExposure"
 # Enable Balance White Auto for the auto function ROI selected
 camera.AutoFunctionROIUseWhiteBalance.Value = False
 # Enable the 'Brightness' auto function (Gain Auto + Exposure Auto)
