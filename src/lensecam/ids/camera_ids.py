@@ -180,6 +180,7 @@ class CameraIds:
             print(f'Exception - find_first_camera : {e}')
 
     def get_camera_device(self):
+        """Get Camera device."""
         return self.camera_device
 
     def get_log_mode(self):
@@ -227,7 +228,12 @@ class CameraIds:
             print("Exception - get_sensor_size: " + str(e) + "")
 
     def init_camera(self, camera_device=None, mode_max: bool = False):
-        """"""
+        """
+        Initialize parameters of the camera.
+        :param camera_device:
+        :param mode_max:
+        :return:
+        """
         if camera_device is None:
             if self.camera_connected:
                 self.camera_remote = self.camera_device.RemoteDevice().NodeMaps()[0]
@@ -250,6 +256,7 @@ class CameraIds:
             self.camera_remote.FindNode("TriggerSource").SetCurrentEntry("Software")
             self.camera_remote.FindNode("TriggerMode").SetCurrentEntry("On")
             self.camera_connected = True
+        self.color_mode = self.get_color_mode()
 
     def alloc_memory(self) -> bool:
         """Alloc the memory to get an image from the camera."""
@@ -280,8 +287,10 @@ class CameraIds:
         """
         self.data_stream = None
 
-    def start_acquisition(self) -> None:
-        """Start acquisition"""
+    def start_acquisition(self) -> bool:
+        """Start acquisition.
+        :return: True if the acquisition is started.
+        """
         time.sleep(0.02)
         if self.camera_acquiring is False:
             try:
@@ -291,8 +300,10 @@ class CameraIds:
                 self.camera_remote.FindNode("AcquisitionStart").WaitUntilDone()
                 self.camera_acquiring = True
                 self.__camera_acquiring = True
+                return True
             except Exception as e:
                 print(f'Exception start_acquisition {e}')
+        return False
 
     def stop_acquisition(self):
         """Stop acquisition"""
@@ -310,6 +321,8 @@ class CameraIds:
         """
         self.stop_acquisition()
         self.free_memory()
+        for buffer in self.data_stream.AnnouncedBuffers():
+            self.data_stream.RevokeBuffer(buffer)
 
     def destroy_camera(self, index: int = 0) -> None:
         self.camera_device = None
@@ -325,7 +338,7 @@ class CameraIds:
             To get the formatted data (8-10-12 bits), fast_mode must be set as False.
         """
         if self.camera_connected and self.camera_acquiring:
-            time.sleep(0.002)
+            time.sleep(0.001)
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
             buffer = self.data_stream.WaitForFinishedBuffer(4000)
