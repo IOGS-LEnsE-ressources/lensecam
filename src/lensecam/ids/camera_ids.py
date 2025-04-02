@@ -183,7 +183,7 @@ class CameraIds:
         return self.camera_device
 
     def get_log_mode(self):
-        #self.camera_remote.FindNode("LogMode").SetCurrentEntry('Off')
+        # self.camera_remote.FindNode("LogMode").SetCurrentEntry('Off')
         log_mode = self.camera_remote.FindNode("LogMode").CurrentEntry().SymbolicValue()
         print(f'Log Mode = {log_mode}')
 
@@ -311,7 +311,7 @@ class CameraIds:
         self.stop_acquisition()
         self.free_memory()
 
-    def destroy_camera(self, index:int = 0) -> None:
+    def destroy_camera(self, index: int = 0) -> None:
         self.camera_device = None
 
     def set_mode(self):
@@ -325,7 +325,7 @@ class CameraIds:
             To get the formatted data (8-10-12 bits), fast_mode must be set as False.
         """
         if self.camera_connected and self.camera_acquiring:
-            time.sleep(0.02)
+            time.sleep(0.002)
             # trigger image
             self.camera_remote.FindNode("TriggerSoftware").Execute()
             buffer = self.data_stream.WaitForFinishedBuffer(4000)
@@ -334,10 +334,9 @@ class CameraIds:
                                                               buffer.Size(), buffer.Width(), buffer.Height())
             self.data_stream.QueueBuffer(buffer)
 
-            if self.color_mode == 'Mono12g24IDS': # NOT YET IMPLEMENTED FOR CONVERSION ! See __init__.py
+            if self.color_mode == 'Mono12g24IDS':  # NOT YET IMPLEMENTED FOR CONVERSION ! See __init__.py
                 raw_convert = raw_image.ConvertTo(ids_ipl.PixelFormatName_Mono12g24IDS,
                                                   ids_ipl.ConversionMode_Fast)
-                print(type(raw_convert))
                 picture = raw_convert.get_numpy_3D().copy()
             elif 'Mono' in self.color_mode:
                 picture = raw_image.get_numpy_3D().copy()
@@ -717,6 +716,7 @@ if __name__ == "__main__":
     displayed = False
     image = None
 
+
     def init_camera_params(my_cam):
         global displayed
         print(f'Old Expo = {my_cam.get_exposure()}')
@@ -729,6 +729,7 @@ if __name__ == "__main__":
         print(f'COlor Mode = {my_cam.get_color_mode()}')
         displayed = False
 
+
     def capture_image(my_cam):
         global image
         global displayed
@@ -736,18 +737,22 @@ if __name__ == "__main__":
         my_cam.alloc_memory()  # allocate buffer to store raw data from the camera
         my_cam.start_acquisition()
         raw_image = my_cam.get_image(fast_mode=True)
-        image = raw_image.view(np.uint16).copy().squeeze()
+        if raw_image.dtype != np.uint8:
+            image = raw_image.view(np.uint16).copy().squeeze()
+        else:
+            image = raw_image.copy().squeeze()
         my_cam.stop_acquisition()
         my_cam.free_memory()
         displayed = True
         th.Timer(1, capture_image, kwargs={"my_cam": my_cam}).start()
 
+
     def display_histo(image):
         histogram = cv2.calcHist([image], [0], None, [1024], [0, 1024])
         plt.figure()
-        #plt.title("Grayscale Image Histogram")
-        #plt.xlabel("Pixel Intensity")
-        #plt.ylabel("Number of Pixels")
+        # plt.title("Grayscale Image Histogram")
+        # plt.xlabel("Pixel Intensity")
+        # plt.ylabel("Number of Pixels")
         # Create a range of values (0 to 255) for the x-axis
         x = np.arange(1024)
         # Plot the histogram as bars
@@ -755,10 +760,12 @@ if __name__ == "__main__":
         plt.xlim([0, 300])  # Limits for the x-axis
         plt.show()
 
+
     my_cam = CameraIds()
     my_cam.find_first_camera()
     my_cam.init_camera(mode_max=True)
     init_camera_params(my_cam)
+    print(f'Color modes = {my_cam.list_color_modes()}')
     capture_image(my_cam)
 
     while True:
@@ -846,7 +853,7 @@ if __name__ == "__main__":
         plt.bar(x, histogram[:, 0], width=1, color='black')
         plt.xlim([100, 300])  # Limits for the x-axis
         plt.show()
-    
+
     if my_cam.set_aoi(20, 40, 100, 200):
         print('AOI OK')
     my_cam.free_memory()
