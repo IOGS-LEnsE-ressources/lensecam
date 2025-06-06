@@ -89,7 +89,7 @@ class CameraBasler:
         self.nb_bits_per_pixels = 8
         self.converter = None
 
-    def init_camera(self, cam_dev=None):
+    def init_camera(self, cam_dev=None, new_version=False):
         """Initialize the camera."""
         if cam_dev is not None:
             self.camera_device = cam_dev
@@ -100,8 +100,9 @@ class CameraBasler:
         self.camera_device.UserSetSelector = "Default"
         self.camera_device.UserSetLoad.Execute()
         self.camera_device.Gamma.Value = 1.0
-        self.camera_device.BslColorSpace.Value = "Off"
-        self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
+        if new_version:
+            self.camera_device.BslColorSpace.Value = "Off"
+            self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
         self.camera_device.Close()
         # Camera informations
         self.serial_no, self.camera_name = self.get_cam_info()
