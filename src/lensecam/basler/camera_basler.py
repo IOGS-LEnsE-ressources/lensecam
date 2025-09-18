@@ -698,8 +698,8 @@ class CameraBasler:
         The txt file should have the following format:
         # comment
         # comment
-        key_1;value1
-        key_2;value2
+        key_1;value1;type1
+        key_2;value2;type2
 
         :param filepath:    Name of a txt file containing the parameters to setup.
         """
