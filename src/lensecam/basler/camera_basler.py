@@ -14,7 +14,7 @@ class to communicate with a Basler camera sensor.
 """
 import os
 from pypylon import pylon, genicam
-import numpy
+import numpy as np
 
 def get_converter_mode(color_mode: str) -> int:
     """Return the converter display mode.
@@ -292,7 +292,7 @@ class CameraBasler:
         self.camera_device.Close()
         return color_list
 
-    def get_image(self) -> numpy.ndarray:
+    def get_image(self) -> np.ndarray:
         """Get one image.
 
         :return: Array of the image.
