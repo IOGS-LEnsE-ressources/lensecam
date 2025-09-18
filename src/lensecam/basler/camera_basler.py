@@ -12,6 +12,7 @@ class to communicate with a Basler camera sensor.
 .. moduleauthor:: Julien VILLEMEJANE <julien.villemejane@institutoptique.fr>
 
 """
+import os
 from pypylon import pylon
 import numpy
 
@@ -85,6 +86,7 @@ class CameraBasler:
         self.camera_remote = None
         self.data_stream = None
         # Camera parameters
+        self.list_params = []
         self.color_mode = None
         self.nb_bits_per_pixels = 8
         self.converter = None
@@ -94,6 +96,8 @@ class CameraBasler:
         if cam_dev is not None:
             self.camera_device = cam_dev
         self.converter = pylon.ImageFormatConverter()
+        # Collect list of accessible parameters of the camera
+        self._list_parameters()
         # Set Gamma Correction to 1.0 (no correction)
         # Set the Color Space to Off (no gamma correction)
         self.camera_device.Open()
@@ -621,6 +625,60 @@ class CameraBasler:
         return False
 
 
+    def _list_parameters(self):
+        """
+        Update the list of accessible parameters of the camera.
+        """
+        self.camera_device.Open()
+        self.list_params = [x for x in dir(self.camera_device) if not x.startswith("__")]
+
+        nodemap = self.camera_device.GetNodeMap()
+
+        for attr in self.list_params:
+            try:
+                node = nodemap.GetNode(param)
+                if hasattr(node, "GetValue"):
+                    pass
+                elif hasattr(node, "Execute"):
+                    self.list_params.remove(attr)
+                else:
+                    self.list_params.remove(attr)
+            except Exception:
+                self.list_params.remove(attr)
+
+    def get_list_parameters(self) -> list:
+        """
+        Get the list of the accessible parameters of the camera.
+        :return:    List of the accessible parameters of the camera.
+        """
+        return self.list_params
+
+    def init_camera_parameters(self, filepath: str):
+        """
+        Initialize camera accessible parameters of the camera from a file.
+        The txt file should have the following format:
+        # comment
+        # comment
+        key_1;value1
+        key_2;value2
+
+        :param filepath:    Name of a txt file containing the parameters to setup.
+        :return:            Dictionnary containing key and value
+        """
+        dictionary_loaded = {}
+        if os.path.exists(filepath):
+            # Read the CSV file, ignoring lines starting with '//'
+            data = np.genfromtxt(filepath, delimiter=';',
+                                 dtype=str, comments='#', encoding='UTF-8')
+            # Populate the dictionary with key-value pairs from the CSV file
+            for key, value in data:
+                dictionary_loaded[key.strip()] = value.strip()
+            return dictionary_loaded
+        else:
+            print('File error')
+            return {}
+
+
 if __name__ == "__main__":
     import time
     import numpy as np
@@ -649,6 +707,8 @@ if __name__ == "__main__":
 
     my_cam = CameraBasler(my_cam_dev)
     my_cam.init_camera()
+    my_cam.init_camera_parameters('default_params.txt')
+
 
     if my_cam.set_frame_rate(5):
         print('FPS  OK')
@@ -667,7 +727,7 @@ if __name__ == "__main__":
         print('AOI OK')
     if my_cam.set_black_level(10):
         print('BL = 10')
-
+    
     # Test with different exposure time
     expo_time_list = [20, 20000, 100000, 250000, 500000, 1000000, 1500000, 2000000]
     mean_value = []
