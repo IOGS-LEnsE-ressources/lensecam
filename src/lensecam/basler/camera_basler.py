@@ -13,9 +13,8 @@ class to communicate with a Basler camera sensor.
 
 """
 import os
-from pypylon import pylon
+from pypylon import pylon, genicam
 import numpy
-
 
 def get_converter_mode(color_mode: str) -> int:
     """Return the converter display mode.
@@ -83,10 +82,11 @@ class CameraBasler:
         else:  # A camera device is connected
             self.camera_connected = True
         self.camera_acquiring = False  # The camera is acquiring
-        self.camera_remote = None
+        self.camera_nodemap = None
         self.data_stream = None
         # Camera parameters
         self.list_params = []
+        self.initial_params = {}
         self.color_mode = None
         self.nb_bits_per_pixels = 8
         self.converter = None
@@ -98,6 +98,7 @@ class CameraBasler:
         self.converter = pylon.ImageFormatConverter()
         # Collect list of accessible parameters of the camera
         self._list_parameters()
+        self.camera_nodemap = self.camera_device.GetNodeMap()
         # Set Gamma Correction to 1.0 (no correction)
         # Set the Color Space to Off (no gamma correction)
         self.camera_device.Open()
@@ -632,11 +633,9 @@ class CameraBasler:
         self.camera_device.Open()
         self.list_params = [x for x in dir(self.camera_device) if not x.startswith("__")]
 
-        nodemap = self.camera_device.GetNodeMap()
-
         for attr in self.list_params:
             try:
-                node = nodemap.GetNode(param)
+                node = self.camera_nodemap.GetNode(attr)
                 if hasattr(node, "GetValue"):
                     pass
                 elif hasattr(node, "Execute"):
@@ -645,6 +644,7 @@ class CameraBasler:
                     self.list_params.remove(attr)
             except Exception:
                 self.list_params.remove(attr)
+        self.camera_device.Close()
 
     def get_list_parameters(self) -> list:
         """
@@ -652,6 +652,45 @@ class CameraBasler:
         :return:    List of the accessible parameters of the camera.
         """
         return self.list_params
+
+    def get_parameter(self, param):
+        """
+        Get the value of a camera parameter.
+        The accessibility of the parameter is verified beforehand.
+        :param param:   Name of the parameter.
+        :return:        Value of the parameter if exists, else None.
+        """
+        if param in self.list_params:
+            node = self.camera_nodemap.GetNode(param)
+            if hasattr(node, "GetValue"):
+                return node.GetValue()
+            else:
+                return None
+        else:
+            return None
+
+    def set_parameter(self, param, value):
+        """
+        Set a camera parameter to a specific value.
+        The accessibility of the parameter is verified beforehand.
+        :param param:   Name of the parameter.
+        :param value:   Value to give to the parameter.
+        """
+        if param in self.list_params:
+            node = self.camera_nodemap.GetNode(param)
+
+            if node.GetAccessMode() == genicam.RW:
+                if hasattr(node, "SetValue"):
+                    node.SetValue(value)
+                    return True
+                else:
+                    print(f"Parameter {param} was not modified.")
+                    return False
+            else:
+                print(f"Parameter {param} is not writable.")
+                return False
+        else:
+            return False
 
     def init_camera_parameters(self, filepath: str):
         """
@@ -663,20 +702,30 @@ class CameraBasler:
         key_2;value2
 
         :param filepath:    Name of a txt file containing the parameters to setup.
-        :return:            Dictionnary containing key and value
         """
-        dictionary_loaded = {}
+        self.camera_device.Open()
+        self.initial_params = {}
         if os.path.exists(filepath):
             # Read the CSV file, ignoring lines starting with '//'
             data = np.genfromtxt(filepath, delimiter=';',
                                  dtype=str, comments='#', encoding='UTF-8')
             # Populate the dictionary with key-value pairs from the CSV file
-            for key, value in data:
-                dictionary_loaded[key.strip()] = value.strip()
-            return dictionary_loaded
+            for key, value, typ in data:
+                match typ:
+                    case 'I':
+                        self.initial_params[key.strip()] = int(value.strip())
+                    case 'F':
+                        self.initial_params[key.strip()] = float(value.strip())
+                    case 'B':
+                        self.initial_params[key.strip()] = value.strip() == "True"
+                    case _:
+                        self.initial_params[key.strip()] = value.strip()
+                self.set_parameter(key, self.initial_params[key.strip()])
+
         else:
             print('File error')
-            return {}
+
+        self.camera_device.Close()
 
 
 if __name__ == "__main__":
