@@ -1,7 +1,7 @@
 # Default camera parameters
 # ParameterName;InitValue;Type (Integer, String, Float)
 AcquisitionBurstFrameCount;1;I
-AcquisitionFrameRate;100.0;F
+AcquisitionFrameRate;10.0;F
 AcquisitionFrameRateEnable;False;B
 #AcquisitionMode;Continuous;S
 #AcquisitionStatus;False;B
@@ -47,7 +47,7 @@ BslHueRaw;0;I
 BslInputFilterTime;0.0;F
 BslInputHoldOffTime;0.0;F
 BslLightControlMode;Off;S
-BslLightSourcePreset;Daylight6500K;S
+BslLightSourcePreset;Off;S
 BslLightSourcePresetFeatureEnable;False;B
 BslLightSourcePresetFeatureSelector;WhiteBalance;S
 BslLineOverloadStatusAll;0;I
@@ -63,7 +63,7 @@ BslResultingFrameBurstRate;156.25;F
 BslSaturation;1.0;F
 BslSaturationRaw;256;I
 BslSensorBitDepth;Bpp12;S
-BslSensorBitDepthMode;Manual;S
+BslSensorBitDepthMode;Auto;S
 BslStaticDefectPixelCorrectionMaxDefects;4096;I
 BslStaticDefectPixelCorrectionMode;Factory;S
 # ChunkCounterSelector;Counter1;S

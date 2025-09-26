@@ -97,8 +97,8 @@ class CameraBasler:
             self.camera_device = cam_dev
         self.converter = pylon.ImageFormatConverter()
         # Collect list of accessible parameters of the camera
-        self._list_parameters()
         self.camera_nodemap = self.camera_device.GetNodeMap()
+        self._list_parameters()
         # Set Gamma Correction to 1.0 (no correction)
         # Set the Color Space to Off (no gamma correction)
         self.camera_device.Open()
@@ -180,6 +180,11 @@ class CameraBasler:
         """Stop acquisition"""
         if self.camera_acquiring is True:
             self.camera_acquiring = False
+
+    def open_cam(self):
+        """Open the camera."""
+        if self.camera_device.IsOpen() is False:
+            self.camera_device.Open()
 
     def disconnect(self):
         """Disconnect the camera."""
@@ -630,8 +635,9 @@ class CameraBasler:
         """
         Update the list of accessible parameters of the camera.
         """
-        self.camera_device.Open()
+        self.open_cam()
         self.list_params = [x for x in dir(self.camera_device) if not x.startswith("__")]
+        print(self.list_params)
 
         for attr in self.list_params:
             try:
@@ -642,9 +648,9 @@ class CameraBasler:
                     self.list_params.remove(attr)
                 else:
                     self.list_params.remove(attr)
-            except Exception:
+            except Exception as e:
                 self.list_params.remove(attr)
-        self.camera_device.Close()
+        self.disconnect()
 
     def get_list_parameters(self) -> list:
         """
@@ -684,10 +690,8 @@ class CameraBasler:
                     node.SetValue(value)
                     return True
                 else:
-                    print(f"Parameter {param} was not modified.")
                     return False
             else:
-                print(f"Parameter {param} is not writable.")
                 return False
         else:
             return False
@@ -703,7 +707,7 @@ class CameraBasler:
 
         :param filepath:    Name of a txt file containing the parameters to setup.
         """
-        self.camera_device.Open()
+        self.open_cam()
         self.initial_params = {}
         if os.path.exists(filepath):
             # Read the CSV file, ignoring lines starting with '//'
@@ -721,11 +725,9 @@ class CameraBasler:
                     case _:
                         self.initial_params[key.strip()] = value.strip()
                 self.set_parameter(key, self.initial_params[key.strip()])
-
         else:
             print('File error')
-
-        self.camera_device.Close()
+        self.disconnect()
 
 
 if __name__ == "__main__":
@@ -756,9 +758,14 @@ if __name__ == "__main__":
 
     my_cam = CameraBasler(my_cam_dev)
     my_cam.init_camera()
-    my_cam.init_camera_parameters('default_params.txt')
+    my_cam.init_camera_parameters('mini_params.txt')
 
+    my_cam.open_cam()
+    node = my_cam.camera_device.GetNodeMap().GetNode("BslColorSpace")
+    print(f'ColorSpace = {node.GetValue()}')
+    my_cam.disconnect()
 
+    '''
     if my_cam.set_frame_rate(5):
         print('FPS  OK')
 
@@ -776,7 +783,9 @@ if __name__ == "__main__":
         print('AOI OK')
     if my_cam.set_black_level(10):
         print('BL = 10')
-    
+    '''
+
+    '''
     # Test with different exposure time
     expo_time_list = [20, 20000, 100000, 250000, 500000, 1000000, 1500000, 2000000]
     mean_value = []
@@ -811,7 +820,6 @@ if __name__ == "__main__":
     plt.title('Standard deviation value of intensity')
     plt.show()
 
-    '''
     # display image
     from matplotlib import pyplot as plt
 

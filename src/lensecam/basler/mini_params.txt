@@ -1,0 +1,7 @@
+# Default camera parameters
+# ParameterName;InitValue;Type (Integer, String, Float)
+BalanceWhiteAuto;Off;S
+BlackLevel;10.0;F
+GainAuto;Off;S
+PixelFormat;Mono12;S
+BslColorSpace;Off;S
