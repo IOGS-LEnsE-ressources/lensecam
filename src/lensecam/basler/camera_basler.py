@@ -102,9 +102,9 @@ class CameraBasler:
         # Set Gamma Correction to 1.0 (no correction)
         # Set the Color Space to Off (no gamma correction)
         self.camera_device.Open()
-        self.camera_device.UserSetSelector = "Default"
-        self.camera_device.UserSetLoad.Execute()
-        self.camera_device.Gamma.Value = 1.0
+        self.camera_nodemap.UserSetSelector = "Default"
+        self.camera_nodemap.UserSetLoad.Execute()
+        self.camera_nodemap.Gamma.Value = 1.0
         if new_version:
             self.camera_device.BslColorSpace.Value = "Off"
             self.camera_device.BslAcquisitionStopMode.Value = "CompleteExposure"
@@ -788,6 +788,9 @@ if __name__ == "__main__":
     '''
     # Test with different exposure time
     expo_time_list = [20, 20000, 100000, 250000, 500000, 1000000, 1500000, 2000000]
+    
+    '''
+    expo_time_list = [20, 20000, 100000, 250000, 500000, 700000, 800000, 900000, 1300000, 1500000, 1600000]
     mean_value = []
     stddev_value = []
 
@@ -815,9 +818,11 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(expo_times, mean_value)
     plt.title('Mean value of intensity')
+    plt.grid()
     plt.figure()
     plt.plot(expo_times, np.array(stddev_value))
     plt.title('Standard deviation value of intensity')
+    plt.grid()
     plt.show()
 
     # display image
@@ -825,7 +830,22 @@ if __name__ == "__main__":
 
     plt.imshow(images[0], interpolation='nearest', cmap='gray')
     plt.show()
-    '''
+
+    my_cam.open_cam()
+    for key in my_cam.list_params:
+        try:
+            node = my_cam.camera_nodemap.GetNode(key)
+            if hasattr(node, "GetValue"):
+                param = node.GetValue()
+            else:
+                param = None
+        except:
+            param = None
+
+        if param is not None:
+            print(f'{key} = {param}')
+    my_cam.disconnect()
+
 
     '''
     if my_cam.set_aoi(200, 300, 500, 400):
