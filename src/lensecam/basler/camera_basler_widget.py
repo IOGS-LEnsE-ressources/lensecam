@@ -30,7 +30,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
 
 from lensepy.images.conversion import *
-from lensepy.pyqt6.widget_slider import WidgetSlider
+from lensepy_app.widgets.widget_slider import WidgetSlider
 
 from lensecam.basler.camera_list import CameraList
 from lensecam.basler.camera_basler import CameraBasler, get_bits_per_pixel
